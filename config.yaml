@@ -1,0 +1,15 @@
+data_settings:
+    dataset_path: 'tokenized_data'
+    vocabulary_path: 'tokenized_data/vocabulary.pickle'
+seq2seq_params:
+    model_name: 'seq2seq'
+    encoder_embedding_dim: 256
+    decoder_embedding_dim: 256
+    hidden_dim: 512
+    num_layers: 2
+    dropout: 0.5
+train:
+    epochs: 1
+    batch_size: 2
+    learning_rate: 0.001
+    checkpoint_folder: 'checkpoints'

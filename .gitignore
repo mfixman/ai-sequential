@@ -1,3 +1,9 @@
+# Tokenized dataset
+tokenized_data/
+
+# pycache
+__pycache__/
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
