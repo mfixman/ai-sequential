@@ -1,6 +1,9 @@
 # Tokenized dataset
 tokenized_data/
 
+# Hyperion
+run_job.sh
+
 # pycache
 __pycache__/
 
