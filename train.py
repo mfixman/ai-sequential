@@ -18,6 +18,7 @@ def train(data_settings, model_settings, train_settings):
     # Model
     INPUT_DIM = len(train_dataset.vocabulary)
     OUTPUT_DIM = len(train_dataset.vocabulary)
+    print(f"\nVocabulary size: {INPUT_DIM}\n")
     encoder = Encoder(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['dropout'])
     decoder = Decoder(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['dropout'])
     model = Seq2Seq(encoder, decoder, device).to(device)
@@ -41,7 +42,7 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, train_
         epoch_loss = 0
 
         for i, (src, trg) in enumerate(train_loader):
-            src, trg = src.to(device), trg.to(device)
+            src, trg = src.transpose(0, 1).to(device), trg.transpose(0, 1).to(device)
 
             optimizer.zero_grad()
             output = model(src, trg)
@@ -51,7 +52,7 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, train_
 
             output_dim = output.shape[-1]
             output = output[1:].view(-1, output_dim)
-            trg = trg[1:].view(-1)
+            trg = trg[1:].reshape(-1)
 
             loss = criterion(output, trg)
             loss.backward()

@@ -98,19 +98,20 @@ class Decoder(nn.Module):
         return prediction, hidden.squeeze(0), cell.squeeze(0)
 
 class Seq2Seq(nn.Module):
-    def __init__(self, encoder, decoder, device):
+    def __init__(self, encoder, decoder, device, max_output_lenght=30):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.device = device
+        self.max_output_lenght = max_output_lenght
 
     def forward(self, src, trg, teacher_forcing_ratio=0.5):
-        src = src.transpose(0, 1)  # Transpose to [src_len, batch_size]
-        trg = trg.transpose(0, 1)  # Transpose to [trg_len, batch_size]
+        #src = src.transpose(0, 1)  # Transpose to [src_len, batch_size]
+        #trg = trg.transpose(0, 1)  # Transpose to [trg_len, batch_size]
         trg_len, batch_size = trg.shape
         trg_vocab_size = self.decoder.output_dim
-        print(f"Src shape: {src.shape}")
-        print(f"Trg shape: {trg.shape}")
+        print(f"\nSrc shape: {src.shape}")
+        print(f"Trg shape: {trg.shape}\n")
 
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device) # Tensor to store decoder outputs
 
@@ -120,6 +121,8 @@ class Seq2Seq(nn.Module):
 
         for t in range(1, trg_len):
             output, hidden, cell = self.decoder(input, hidden, cell, encoder_outputs)
+            print(f"\nDecoder output shape: {output.shape}")
+            print(f"Decoder output: {output}\n")
             outputs[t] = output
             teacher_force = random.random() < teacher_forcing_ratio # Decide whether to use teacher forcing
             top1 = output.argmax(1) # Greedy decoding
