@@ -13,7 +13,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 def train(data_settings, model_settings, train_settings):
     # Dataset
     train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], split_type='validation', vocabulary_file=data_settings['vocabulary_path'])
-    train_loader = DataLoader(train_dataset, batch_size=train_settings['batch_size'], shuffle=False, num_workers=2, collate_fn=collate_fn)
+    train_loader = DataLoader(train_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
 
     # Model
     INPUT_DIM = len(train_dataset.vocabulary)

@@ -9,7 +9,7 @@ seq2seq_params:
     num_layers: 2
     dropout: 0.5
 train:
-    epochs: 1
-    batch_size: 2
+    epochs: 10
+    batch_size: 4
     learning_rate: 0.001
     checkpoint_folder: 'checkpoints'
