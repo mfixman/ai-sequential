@@ -5,12 +5,13 @@ from torch.utils.data import DataLoader
 from utils import load_config, collate_fn
 from models import Encoder, Decoder, Seq2Seq
 from dataset import NewsDataset
+from logger import Logger
 
 torch.manual_seed(42)
 #os.environ['https_proxy'] = "http://hpc-proxy00.city.ac.uk:3128" # Proxy to train with hyperion
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def train(data_settings, model_settings, train_settings):
+def train(data_settings, model_settings, train_settings, logger):
     # Dataset
     train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='validation', vocabulary_file=data_settings['vocabulary_path'])
     train_loader = DataLoader(train_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
@@ -33,9 +34,9 @@ def train(data_settings, model_settings, train_settings):
     # TBD
 
     # Train loop
-    train_loop(model, train_loader, criterion, optimizer, model_settings, train_settings)
+    train_loop(model, train_loader, criterion, optimizer, model_settings, train_settings, logger)
 
-def train_loop(model, train_loader, criterion, optimizer, model_settings, train_settings, clip=1):
+def train_loop(model, train_loader, criterion, optimizer, model_settings, train_settings, logger, clip=1):
     min_loss = float('inf')
     for epoch in range(train_settings['epochs']):
         model.train()
@@ -62,6 +63,7 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, train_
 
         avg_loss = epoch_loss / len(train_loader)
         print(f'Epoch: {epoch+1:02} | Train Loss: {avg_loss:.3f}')
+        logger.log({'train_loss': avg_loss})
 
         # Save checkpoint if improvement
         if avg_loss < min_loss:
@@ -76,11 +78,16 @@ def main():
     model_setting = config['seq2seq_params']
     train_setting = config['train']
 
+    wandb_logger = Logger(
+        f"News_Summarization",
+        project='news_sum')
+    logger = wandb_logger.get_logger()
+
     print("\n############## MODEL SETTINGS ##############")
     print(model_setting)
     print()
     
-    train(data_setting, model_setting, train_setting)
+    train(data_setting, model_setting, train_setting, logger)
     #validate(data_setting, model_setting, train_setting)
 
 if __name__ == '__main__':
