@@ -4,6 +4,7 @@ import os
 from nltk import tokenize
 from nltk.corpus import stopwords
 from nltk.util import ngrams
+from transformers import AutoTokenizer
 
 class DatasetTokenizer:
     def __init__(self, saving_path='', ngram_size=1):
@@ -102,6 +103,70 @@ class DatasetTokenizer:
         self.save_data('vocabulary', self.vocabulary)
         print(" done")
 
+
+class SubwordDatasetTokenizer(DatasetTokenizer):
+    def __init__(self, saving_path='', model_name='bert-base-uncased'):
+        """
+        Initializes the SubwordDatasetTokenizer class.
+
+        :param saving_path: The directory path where the processed files will be saved.
+        :param model_name: The name of the pre-trained tokenizer model to use.
+        """
+        super().__init__(saving_path)
+        self.model_name = model_name
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    def tokenize_text(self, texts):
+        """
+        Tokenizes a list of texts using the pre-trained WordPiece tokenizer.
+        """
+        return [self.tokenizer.tokenize(text) for text in texts]
+    
+    def process_splits(self, dataset):
+        """Processes each dataset split."""
+        for split in dataset:
+            print(f"Processing {split}...")
+            raw_texts = dataset[split]['article']
+            raw_summaries = dataset[split]['highlights']
+
+            tokenized_texts = self.tokenize_text(raw_texts)
+            tokenized_summaries = self.tokenize_text(raw_summaries)
+
+            cleaned_texts = self.clean_text(tokenized_texts)
+            cleaned_summaries = self.clean_text(tokenized_summaries)
+
+            self.save_data(f'{split}_text', cleaned_texts)
+            self.save_data(f'{split}_high', cleaned_summaries)
+    
+    def tokenize_dataset(self):
+        """Orchestrates the dataset tokenization process."""
+        print("Loading dataset...")
+        dataset = self.load_dataset()
+        print(" done")
+        self.process_splits(dataset)
+        print(" done")
+        print("Saving vocabulary...")
+        self.save_data('vocabulary', self.tokenizer.get_vocab())
+        print(" done")
+
+
 if __name__ == '__main__':
-    tokenizer = DatasetTokenizer('tokenized_data')
-    tokenizer.tokenize_dataset()
+    subword_tokenizer = SubwordDatasetTokenizer('tokenized_data_subword', model_name='bert-base-uncased')
+    
+    # Accessing special tokens and their attributes
+    model_name = 'bert-base-uncased'
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    print("Special Tokens Used by the Tokenizer:")
+    print("=======================================")
+    print(f"Pad Token: {tokenizer.pad_token}, ID: {tokenizer.pad_token_id}")
+    print(f"Unknown Token: {tokenizer.unk_token}, ID: {tokenizer.unk_token_id}")
+    print(f"Start of Sequence Token: {tokenizer.cls_token}, ID: {tokenizer.cls_token_id}")
+    print(f"End of Sequence Token: {tokenizer.sep_token}, ID: {tokenizer.sep_token_id}")
+    print(f"Mask Token: {tokenizer.mask_token}, ID: {tokenizer.mask_token_id}")
+    print("=======================================")
+
+    # Tokenization
+    #subword_tokenizer.tokenize_dataset()
+
+    #tokenizer = DatasetTokenizer('tokenized_data')
+    #tokenizer.tokenize_dataset()

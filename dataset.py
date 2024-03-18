@@ -5,15 +5,17 @@ import os
 from utils import collate_fn
 
 class NewsDataset(Dataset):
-    def __init__(self, data_dir, split_type, vocabulary_file):
+    def __init__(self, data_dir, special_tokens, split_type, vocabulary_file):
         """
         Initializes the NewsDataset class.
 
         :param data_dir: Directory where the tokenized data is stored.
         :param split_type: Type of the dataset split ('train', 'test', or 'validation').
         :param vocabulary_file: Path to the vocabulary pickle file.
+        :param special_tokens: Special tokens list
         """
         self.data_dir = data_dir
+        self.special_tokens = special_tokens
         self.split_type = split_type
 
         # Load the vocabulary
@@ -47,12 +49,12 @@ class NewsDataset(Dataset):
 
         :param idx: Index of the data point.
         """
-        text_tokens = ['<sos>'] + self.texts[idx] + ['<eos>']
-        summary_tokens = ['<sos>'] + self.summaries[idx] + ['<eos>']
+        text_tokens = [self.special_tokens[2]] + self.texts[idx] + [self.special_tokens[3]]
+        summary_tokens = [self.special_tokens[2]] + self.summaries[idx] + [self.special_tokens[3]]
 
         # Convert tokens to their numerical representations
-        text_numerical = [self.vocabulary.get(token, self.vocabulary['<unk>']) for token in text_tokens]
-        summary_numerical = [self.vocabulary.get(token, self.vocabulary['<unk>']) for token in summary_tokens]
+        text_numerical = [self.vocabulary.get(token, self.vocabulary[self.special_tokens[1]]) for token in text_tokens]
+        summary_numerical = [self.vocabulary.get(token, self.vocabulary[self.special_tokens[1]]) for token in summary_tokens]
 
         # Convert lists to PyTorch tensors
         text_tensor = torch.tensor(text_numerical, dtype=torch.long)

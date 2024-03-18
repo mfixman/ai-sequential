@@ -12,7 +12,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(data_settings, model_settings, train_settings):
     # Dataset
-    train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], split_type='validation', vocabulary_file=data_settings['vocabulary_path'])
+    train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='validation', vocabulary_file=data_settings['vocabulary_path'])
     train_loader = DataLoader(train_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
 
     # Model
@@ -27,7 +27,7 @@ def train(data_settings, model_settings, train_settings):
     optimizer = torch.optim.Adam(model.parameters(), lr=train_settings['learning_rate'])
 
     # Loss
-    criterion = nn.CrossEntropyLoss(ignore_index=train_dataset.vocabulary['<pad>'])
+    criterion = nn.CrossEntropyLoss(ignore_index=train_dataset.vocabulary[data_settings['special_tokens'][0]])
 
     # Logger
     # TBD
@@ -36,9 +36,9 @@ def train(data_settings, model_settings, train_settings):
     train_loop(model, train_loader, criterion, optimizer, model_settings, train_settings)
 
 def train_loop(model, train_loader, criterion, optimizer, model_settings, train_settings, clip=1):
+    min_loss = float('inf')
     for epoch in range(train_settings['epochs']):
         model.train()
-        min_loss = float('inf')
         epoch_loss = 0
 
         for i, (src, trg) in enumerate(train_loader):
@@ -66,7 +66,7 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, train_
         # Save checkpoint if improvement
         if avg_loss < min_loss:
             print(f'Loss decreased ({min_loss:.4f} --> {avg_loss:.4f}). Saving model ...')
-            torch.save(model.state_dict(), f"{train_settings['checkpoint_folder']}/{model_settings['model_name']}_ckt_{epoch+1}.pth")
+            torch.save(model.state_dict(), f"{train_settings['checkpoint_folder']}/{model_settings['model_name']}_ckt.pth")
             min_loss = avg_loss
 
 def main():

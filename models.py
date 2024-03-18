@@ -75,18 +75,18 @@ class Decoder(nn.Module):
         # Combine embedded input word and encoder outputs
         rnn_input = torch.cat((embedded, hidden.unsqueeze(0)), dim=2)
 
-        print("Decoder shapes:")
-        print(f"Input shape: {rnn_input.shape}")
-        print(f"Hidden: {hidden.shape}")
-        print(f"Cell: {cell.shape}")
+        #print("Decoder shapes:")
+        #print(f"Input shape: {rnn_input.shape}")
+        #print(f"Hidden: {hidden.shape}")
+        #print(f"Cell: {cell.shape}")
 
         output, (hidden, cell) = self.rnn(rnn_input, (hidden.unsqueeze(0), cell.unsqueeze(0)))
         # output shape: [seq_len, batch_size, dec_hid_dim * num_directions]
         # hidden, cell shapes: [num_layers * num_directions, batch_size, dec_hid_dim]
 
-        print(f"Output shape: {output.shape}")
-        print(f"Hidden: {hidden.shape}")
-        print(f"Cell: {cell.shape}")
+        #print(f"Output shape: {output.shape}")
+        #print(f"Hidden: {hidden.shape}")
+        #print(f"Cell: {cell.shape}")
 
         embedded = embedded.squeeze(0)
         output = output.squeeze(0)
@@ -110,8 +110,8 @@ class Seq2Seq(nn.Module):
         #trg = trg.transpose(0, 1)  # Transpose to [trg_len, batch_size]
         trg_len, batch_size = trg.shape
         trg_vocab_size = self.decoder.output_dim
-        print(f"\nSrc shape: {src.shape}")
-        print(f"Trg shape: {trg.shape}\n")
+        #print(f"\nSrc shape: {src.shape}")
+        #print(f"Trg shape: {trg.shape}\n")
 
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device) # Tensor to store decoder outputs
 
@@ -121,8 +121,8 @@ class Seq2Seq(nn.Module):
 
         for t in range(1, trg_len):
             output, hidden, cell = self.decoder(input, hidden, cell, encoder_outputs)
-            print(f"\nDecoder output shape: {output.shape}")
-            print(f"Decoder output: {output}\n")
+            #print(f"\nDecoder output shape: {output.shape}")
+            #print(f"Decoder output: {output}\n")
             outputs[t] = output
             teacher_force = random.random() < teacher_forcing_ratio # Decide whether to use teacher forcing
             top1 = output.argmax(1) # Greedy decoding

@@ -1,5 +1,6 @@
 # Tokenized dataset
 tokenized_data/
+tokenized_data_subword/
 
 # Hyperion
 run_job.sh
