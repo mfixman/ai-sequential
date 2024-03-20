@@ -3,6 +3,7 @@ from torch.utils.data import Dataset, DataLoader
 import pickle
 import os
 from utils import collate_fn
+from dataset_tokenizer import SubwordDatasetTokenizer
 
 class NewsDataset(Dataset):
     def __init__(self, data_dir, special_tokens, split_type, vocabulary_file):
@@ -49,6 +50,8 @@ class NewsDataset(Dataset):
 
         :param idx: Index of the data point.
         """
+        #print(f"\nText: {self.texts[idx]}")
+        #print(f"Summary: {self.summaries[idx]}\n")
         text_tokens = [self.special_tokens[2]] + self.texts[idx] + [self.special_tokens[3]]
         summary_tokens = [self.special_tokens[2]] + self.summaries[idx] + [self.special_tokens[3]]
 
@@ -63,11 +66,15 @@ class NewsDataset(Dataset):
         return text_tensor, summary_tensor
     
 if __name__ == '__main__':
-    dataset = NewsDataset(data_dir='tokenized_data', split_type='validation', vocabulary_file=os.path.join('tokenized_data', 'vocabulary.pickle'))
+    dataset = NewsDataset(data_dir='tokenized_data_subword', split_type='validation', special_tokens=['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]'],  vocabulary_file=os.path.join('tokenized_data_subword', 'vocabulary.pickle'))
 
-    dataloader = DataLoader(dataset, batch_size=2, shuffle=False, collate_fn=collate_fn)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
 
+    subword_tokenizer = SubwordDatasetTokenizer(model_name='bert-base-uncased')
     for text, summary in dataloader:
-        print(f"Text: {text}\n")
-        print(f"Sum: {summary}\n\n")
+        print(f"Text_shape: {text.shape}, Text: {text.transpose(0,1)}")
+        text_detokenized = subword_tokenizer.tokenizer.decode(text.transpose(0,1)[0].cpu().numpy())
+        summary_detokenized = subword_tokenizer.tokenizer.decode(summary.transpose(0,1)[0].cpu().numpy())
+        print(f"\nText_loader: {text}\nText: {text_detokenized}")
+        print(f"Sum_loader: {summary}\nSum: {summary_detokenized}\n")
         break

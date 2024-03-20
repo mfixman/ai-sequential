@@ -5,6 +5,12 @@ tokenized_data_subword/
 # Hyperion
 run_job.sh
 
+# Wandb
+wandb/
+
+# Checkpoint folder
+checkpoints/
+
 # pycache
 __pycache__/
 
