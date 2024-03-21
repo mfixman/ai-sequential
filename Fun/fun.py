@@ -33,7 +33,7 @@ class Encoder(nn.Module):
 				batch_first = True,
 		)
 
-	def forward(self, input : tensor) -> Tuple[tensor, tensor]:
+	def forward(self, input : tensor) -> tuple[tensor, tensor]:
 		x = self.embedding(input)
 		output, hidden = self.gru(x)
 		return output, hidden
@@ -140,7 +140,6 @@ class Runner:
 			val_loss = self.run_part(self.val_text.to(device), self.val_high.to(device))
 
 		return val_loss
-
 
 def main():
 	torch.autograd.set_detect_anomaly(True)
