@@ -61,11 +61,10 @@ class Runner:
 	decoder : Decoder
 	optimiser : Optimizer
 	criterion : nn.CrossEntropyLoss
-	loader : DataLoader
 	val_loader : DataLoader
 
 	def __init__(self):
-		self.load_data(n = 5000)
+		self.load_data(n = 30000)
 		self.encoder = Encoder(len(self.vocab)).to(device)
 		self.decoder = Decoder(len(self.vocab)).to(device)
 		self.optimiser = Adam(list(self.encoder.parameters()) + list(self.decoder.parameters()), lr = 1e-3, weight_decay = 1e-3)
@@ -74,7 +73,7 @@ class Runner:
 		wandb.watch(self.encoder, log = 'all', log_freq = 100)
 		wandb.watch(self.decoder, log = 'all', log_freq = 100)
 
-	def load_data(self, n = None, batch_size = 32) -> DataLoader:
+	def load_data(self, n = None, batch_size = 128) -> DataLoader:
 		print('Loading data', file = sys.stderr)
 		self.vocab = pickle.load(open('vocab.pickle', 'rb'))
 
