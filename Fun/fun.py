@@ -1,6 +1,3 @@
-import numpy
-import matplotlib
-
 import torch
 import torch.nn as nn
 import wandb
@@ -8,9 +5,12 @@ from wandb import Artifact
 
 from torch import tensor
 from torch.utils.data import DataLoader
-from torch.nn.utils.rnn import pad_sequence
+from torch.optim import Adam, Optimizer
 
+import sys
 import pickle
+
+from typing import List, Dict, Tuple
 
 sos = '<SOS>'
 eos = '<EOS>'
@@ -20,10 +20,10 @@ special = {sos, eos, pad, unk}
 device = 'cuda'
 
 class Encoder(nn.Module):
-	def __init__(self, vocab : dict[str, int]):
+	def __init__(self, len_vocab : int):
 		super().__init__()
 		self.embedding = nn.Embedding(
-				num_embeddings = len(vocab),
+				num_embeddings = len_vocab,
 				embedding_dim = 256,
 		)
 		self.gru = nn.GRU(
@@ -33,19 +33,19 @@ class Encoder(nn.Module):
 				batch_first = True,
 		)
 
-	def forward(self, input : tensor) -> tuple[tensor, tensor]:
+	def forward(self, input : tensor) -> Tuple[tensor, tensor]:
 		x = self.embedding(input)
 		output, hidden = self.gru(x)
 		return output, hidden
 
 class Decoder(nn.Module):
-	def __init__(self, vocab : dict[str, int]):
+	def __init__(self, len_vocab : int):
 		super().__init__()
-		self.embedding = nn.Embedding(num_embeddings = len(vocab), embedding_dim = 256)
+		self.embedding = nn.Embedding(num_embeddings = len_vocab, embedding_dim = 256)
 		self.relu = nn.ReLU()
 		self.gru = nn.GRU(input_size = 256, hidden_size = 128, batch_first = True)
 		self.out = nn.Linear(128, 128)
-		self.out2 = nn.Linear(128, len(vocab))
+		self.out2 = nn.Linear(128, len_vocab)
 
 	def forward(self, input : tensor, hidden : tensor):
 		x = self.embedding(input)
@@ -57,43 +57,42 @@ class Decoder(nn.Module):
 
 class Runner:
 	loader : DataLoader
+	encoder : Encoder
+	decoder : Decoder
+	optimiser : Optimizer
+	criterion : nn.CrossEntropyLoss
+
 	def __init__(self):
-		self.loader = self.load_data(n = 30000)
-		self.encoder = Encoder(self.vocab).to(device)
-		self.decoder = Decoder(self.vocab).to(device)
-		self.optimiser = torch.optim.Adam(list(self.encoder.parameters()) + list(self.decoder.parameters()), lr = 1e-3, weight_decay = 1e-3)
-		self.criterion = torch.nn.CrossEntropyLoss().to(device)
-		self.total_loss = None
+		self.load_data(n = 30)
+		self.encoder = Encoder(len(self.vocab)).to(device)
+		self.decoder = Decoder(len(self.vocab)).to(device)
+		self.optimiser = Adam(list(self.encoder.parameters()) + list(self.decoder.parameters()), lr = 1e-3, weight_decay = 1e-3)
+		self.criterion = nn.CrossEntropyLoss().to(device)
 
 		wandb.watch(self.encoder, log = 'all', log_freq = 100)
 		wandb.watch(self.decoder, log = 'all', log_freq = 100)
 
 	def load_data(self, n = None, batch_size = 256) -> DataLoader:
+		print('Loading data', file = sys.stderr)
+		self.vocab = pickle.load(open('vocab.pickle', 'rb'))
+
 		train_text = pickle.load(open('train_text.pickle', 'rb'))[:n]
 		train_high = pickle.load(open('train_high.pickle', 'rb'))[:n]
 
-		print(f'Calculating vocab for {n} rows...', flush = True)
-		self.vocab = {
-			k: e
-			for e, k in enumerate(
-				  special
-				| set.union(*(set(x) for x in train_text))
-				| set.union(*(set(x) for x in train_high))
-			)
-		}
-		pickle.dump(self.vocab, open('vocab.pickle', 'wb'))
-		print(f'Calculated vocab with {len(self.vocab)} words!', flush = True)
+		val_text = pickle.load(open('val_text.pickle', 'rb'))[:n]
+		val_high = pickle.load(open('val_high.pickle', 'rb'))[:n]
 
-		tn = [tensor([self.vocab[x] for x in y]) for y in train_text]
-		tn = pad_sequence(tn, batch_first = True, padding_value = self.vocab[pad])
+		self.text_len = max(max(len(x) for x in train_text), max(len(x) for x in val_text))
+		self.high_len = max(max(len(x) for x in train_high), max(len(x) for x in val_high))
 
-		th = [tensor([self.vocab[x] for x in y]) for y in train_high]
-		th = pad_sequence(th, batch_first = True, padding_value = self.vocab[pad])
+		tn = [tensor(y + [self.vocab[pad]] * (self.text_len - len(y))) for y in train_text]
+		th = [tensor(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in train_high]
 
-		size = min(len(tn), len(th))
-		wandb.log({'Status': 'Loaded data', 'Size': size})
+		self.loader = DataLoader(list(zip(tn, th)), batch_size = batch_size, shuffle = True)
 
-		return DataLoader(list(zip(tn, th)), batch_size = batch_size, shuffle = True)
+		self.val_text = tensor([(float(y) + [float(self.vocab[pad])] * (self.text_len - len(y))) for y in val_text], requires_grad = True)
+		self.val_high = tensor([(float(y) + [float(self.vocab[pad])] * (self.high_len - len(y))) for y in val_high], requires_grad = True)
+		print('Loaded data', file = sys.stderr)
 
 	def run_part(self, text : tensor, high : tensor):
 		self.optimiser.zero_grad()
@@ -107,17 +106,22 @@ class Runner:
 		text_len = text.size(1)
 		high_len = high.size(1)
 		for t in range(1, high_len):
-			# wandb.log({'Part run': t, 'Total len': high_len})
 			di1 = decoder_input.unsqueeze(1)
 			decoder_output, decoder_hidden = self.decoder(di1, decoder_hidden)
 			loss += self.criterion(decoder_output.squeeze(1), high[:, t])
 			decoder_input = high[:, t]
 
-		self.total_loss += loss
 		loss.backward()
 		self.optimiser.step()
 
-	def log(self, model, name):
+		return loss
+
+	def log_models(self):
+		self.log(self.encoder, 'encoder')
+		self.log(self.decoder, 'decoder')
+
+	@staticmethod
+	def log(model, name):
 		torch.save(model.state_dict(), f'{name}.pth')
 
 		artifact = Artifact(f'{name}-weights', type = 'model')
@@ -125,10 +129,18 @@ class Runner:
 		wandb.log_artifact(artifact)
 
 	def run_epoch(self):
-		self.total_loss = 0
+		loss = 0
 		for e, (text, high) in enumerate(self.loader):
-			# wandb.log({'Partial Loss': self.total_loss})
-			self.run_part(text.to(device), high.to(device))
+			loss += self.run_part(text.to(device), high.to(device))
+
+		return loss
+	
+	def val_loss(self):
+		with torch.no_grad():
+			val_loss = self.run_part(self.val_text.to(device), self.val_high.to(device))
+
+		return val_loss
+
 
 def main():
 	torch.autograd.set_detect_anomaly(True)
@@ -136,17 +148,17 @@ def main():
 	runner = Runner()
 
 	epochs = 1001
+	last_val_loss = float('inf')
 	for e in range(epochs):
-		previous_loss = runner.total_loss
-		runner.run_epoch()
+		train_loss = runner.run_epoch()
+		val_loss = runner.val_loss()
 
-		if e % 10 == 0 and (previous_loss or float('inf')) > runner.total_loss:
-			print('Best loss found!', flush = True)
-			runner.log(runner.encoder, 'encoder')
-			runner.log(runner.decoder, 'decoder')
+		print(f'Epoch {e}: train loss = {train_loss}, val loss = {val_loss}', file = sys.stderr)
+		wandb.log({'Epoch': e, 'Train Loss': train_loss, 'Val Loss': val_loss})
 
-		print(f'Epoch {e}: loss = {runner.total_loss.item()}', flush = True)
-		wandb.log({'Epoch': e, 'Total Loss': runner.total_loss.item()})
+		if e % 10 == 0 and val_loss < last_val_loss:
+			print('Best loss found!', file = sys.stderr)
+			runner.log_models()
 
 if __name__ == '__main__':
 	main()
