@@ -20,15 +20,15 @@ special = {sos, eos, pad, unk}
 device = 'cuda'
 
 class Encoder(nn.Module):
-	def __init__(self, len_vocab : int):
+	def __init__(self, len_vocab : int, quotient = 1):
 		super().__init__()
 		self.embedding = nn.Embedding(
 			num_embeddings = len_vocab,
-			embedding_dim = 256,
+			embedding_dim = 256 // quotient,
 		)
 		self.lstm = nn.LSTM(
-			input_size = 256,
-			hidden_size = 128,
+			input_size = 256 // quotient,
+			hidden_size = 128 // quotient,
 			num_layers = 1,
 			batch_first = True,
 		)
@@ -39,16 +39,15 @@ class Encoder(nn.Module):
 		return output, (hidden, cell)
 
 class Decoder(nn.Module):
-	def __init__(self, len_vocab : int):
+	def __init__(self, len_vocab : int, quotient = 1):
 		super().__init__()
-		self.embedding = nn.Embedding(num_embeddings = len_vocab, embedding_dim = 256)
+		self.embedding = nn.Embedding(num_embeddings = len_vocab, embedding_dim = 256 // quotient)
 		self.relu = nn.ReLU()
-		self.lstm = nn.LSTM(input_size = 256, hidden_size = 128, batch_first = True)
-		self.out = nn.Linear(128, 128)
-		self.out2 = nn.Linear(128, len_vocab)
+		self.lstm = nn.LSTM(input_size = 256 // quotient, hidden_size = 128 // quotient, batch_first = True)
+		self.out = nn.Linear(128 // quotient, 128 // quotient)
+		self.out2 = nn.Linear(128 // quotient, len_vocab)
 
 	def forward(self, input : tensor, hidden : tensor):
-		print(f'Shape is {input.shape}', file = sys.stderr)
 		x = self.embedding(input)
 		x, (h, c) = self.lstm(x, hidden)
 		x = self.out(x)
@@ -64,10 +63,10 @@ class Runner:
 	criterion : nn.CrossEntropyLoss
 	val_loader : DataLoader
 
-	def __init__(self):
-		self.load_data(n = 1000)
-		self.encoder = Encoder(len(self.vocab)).to(device)
-		self.decoder = Decoder(len(self.vocab)).to(device)
+	def __init__(self, n, batch_size, quotient):
+		self.load_data(n = n, batch_size = batch_size)
+		self.encoder = Encoder(len(self.vocab), quotient).to(device)
+		self.decoder = Decoder(len(self.vocab), quotient).to(device)
 		self.optimiser = Adam(list(self.encoder.parameters()) + list(self.decoder.parameters()), lr = 1e-3, weight_decay = 1e-3)
 		self.criterion = nn.CrossEntropyLoss().to(device)
 
@@ -113,11 +112,6 @@ class Runner:
 			topv, topi = decoder_output.topk(1)
 			decoder_input = topi.squeeze(-1).detach()
 
-			print(f'In loop it is {decoder_input.shape}', file = sys.stderr)
-			# if decoder_input.dim() == 0:
-				# decoder_input = decoder_input.unsqueeze(0)  # Make it 1D if it's scalar
-			# decoder_input = decoder_input.unsqueeze(1)  # Ensure the shape is [batch_size, 1]
-
 			loss += self.criterion(decoder_output.squeeze(1), high[:, t])
 
 		loss.backward()
@@ -140,23 +134,34 @@ class Runner:
 	def run_epoch(self, loader):
 		loss = 0
 		for e, (text, high) in enumerate(loader):
+			if e % 50 == 0:
+				print(f'Running part {e}', file = sys.stderr)
 			loss += self.run_part(text.to(device), high.to(device))
 
 		return loss
 
 def main():
 	torch.autograd.set_detect_anomaly(True)
-	wandb.init(project = 'fun')
-	runner = Runner()
 
-	epochs = 1001
+	config = dict(
+		n = 5,
+		batch_size = 32,
+		learner = 'lstm',
+		quotient = 4,
+		epochs = 101,
+	)
+	wandb.init(project = 'fun', config = config)
+	runner = Runner(n = config['n'], batch_size = config['batch_size'], quotient = config['quotient'])
+
+	epochs = config['epochs']
 	last_val_loss = float('inf')
 	for e in range(1, epochs):
 		print(f'Training epoch {e}', file = sys.stderr)
 		train_loss = runner.run_epoch(runner.loader)
 
 		print(f'Validation epoch {e}', file = sys.stderr)
-		val_loss = runner.run_epoch(runner.val_loader)
+		with torch.no_grad():
+			val_loss = runner.run_epoch(runner.val_loader)
 
 		print(f'Epoch {e}: train loss = {train_loss}, val loss = {val_loss}', file = sys.stderr)
 		wandb.log({'Epoch': e, 'Train Loss': train_loss, 'Val Loss': val_loss})
