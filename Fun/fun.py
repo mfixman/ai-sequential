@@ -97,7 +97,6 @@ class Runner:
 		print('Loaded data', file = sys.stderr)
 
 	def run_part(self, text : tensor, high : tensor):
-		self.optimiser.zero_grad()
 		encoder_output, (encoder_hidden, encoder_cell) = self.encoder(text)
 
 		assert all(high[:, 0] == self.vocab[sos])
@@ -114,9 +113,13 @@ class Runner:
 
 			loss += self.criterion(decoder_output.squeeze(1), high[:, t])
 
+		return loss
+
+	def train(self, text : tensor, high : tensor):
+		self.optimiser.zero_grad()
+		loss = self.run_part(text, high)
 		loss.backward()
 		self.optimiser.step()
-
 		return loss
 
 	def log_models(self):
@@ -131,12 +134,16 @@ class Runner:
 		artifact.add_file(f'{name}.pth')
 		wandb.log_artifact(artifact)
 
-	def run_epoch(self, loader):
+	def run_epoch(self, loader, training):
 		loss = 0
 		for e, (text, high) in enumerate(loader):
 			if e % 50 == 0:
 				print(f'Running part {e}', file = sys.stderr)
-			loss += self.run_part(text.to(device), high.to(device))
+
+			if training:
+				loss += self.train(text.to(device), high.to(device))
+			else:
+				loss += self.run_part(text.to(device), high.to(device))
 
 		return loss
 
@@ -144,7 +151,7 @@ def main():
 	torch.autograd.set_detect_anomaly(True)
 
 	config = dict(
-		n = 5,
+		n = 10000,
 		batch_size = 32,
 		learner = 'lstm',
 		quotient = 4,
@@ -157,11 +164,11 @@ def main():
 	last_val_loss = float('inf')
 	for e in range(1, epochs):
 		print(f'Training epoch {e}', file = sys.stderr)
-		train_loss = runner.run_epoch(runner.loader)
+		train_loss = runner.run_epoch(runner.loader, training = True)
 
 		print(f'Validation epoch {e}', file = sys.stderr)
 		with torch.no_grad():
-			val_loss = runner.run_epoch(runner.val_loader)
+			val_loss = runner.run_epoch(runner.val_loader, training = False)
 
 		print(f'Epoch {e}: train loss = {train_loss}, val loss = {val_loss}', file = sys.stderr)
 		wandb.log({'Epoch': e, 'Train Loss': train_loss, 'Val Loss': val_loss})
