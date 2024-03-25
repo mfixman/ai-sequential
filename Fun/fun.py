@@ -91,8 +91,8 @@ class Runner:
 		th = [tensor(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in train_high]
 		self.loader = DataLoader(list(zip(tn, th)), batch_size = batch_size, shuffle = True)
 
-		vn = [(y + [self.vocab[pad]] * (self.text_len - len(y))) for y in val_text]
-		vh = [(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in val_high]
+		vn = [tensor(y + [self.vocab[pad]] * (self.text_len - len(y))) for y in val_text]
+		vh = [tensor(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in val_high]
 		self.val_loader = DataLoader(list(zip(vn, vh)), batch_size = batch_size, shuffle = True)
 
 		print('Loaded data', file = sys.stderr)
