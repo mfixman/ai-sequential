@@ -23,37 +23,38 @@ class Encoder(nn.Module):
 	def __init__(self, len_vocab : int):
 		super().__init__()
 		self.embedding = nn.Embedding(
-				num_embeddings = len_vocab,
-				embedding_dim = 256,
-				)
-		self.gru = nn.GRU(
-				input_size = 256,
-				hidden_size = 128,
-				num_layers = 1,
-				batch_first = True,
-				)
+			num_embeddings = len_vocab,
+			embedding_dim = 256,
+		)
+		self.lstm = nn.LSTM(
+			input_size = 256,
+			hidden_size = 128,
+			num_layers = 1,
+			batch_first = True,
+		)
 
 	def forward(self, input : tensor) -> tuple[tensor, tensor]:
 		x = self.embedding(input)
-		output, hidden = self.gru(x)
-		return output, hidden
+		output, (hidden, cell) = self.lstm(x)
+		return output, (hidden, cell)
 
 class Decoder(nn.Module):
 	def __init__(self, len_vocab : int):
 		super().__init__()
 		self.embedding = nn.Embedding(num_embeddings = len_vocab, embedding_dim = 256)
 		self.relu = nn.ReLU()
-		self.gru = nn.GRU(input_size = 256, hidden_size = 128, batch_first = True)
+		self.lstm = nn.LSTM(input_size = 256, hidden_size = 128, batch_first = True)
 		self.out = nn.Linear(128, 128)
 		self.out2 = nn.Linear(128, len_vocab)
 
 	def forward(self, input : tensor, hidden : tensor):
+		print(f'Shape is {input.shape}', file = sys.stderr)
 		x = self.embedding(input)
-		x, h = self.gru(x, hidden)
+		x, (h, c) = self.lstm(x, hidden)
 		x = self.out(x)
 		x = self.relu(x)
 		x = self.out2(x)
-		return x, h
+		return x, (h, c)
 
 class Runner:
 	loader : DataLoader
@@ -64,7 +65,7 @@ class Runner:
 	val_loader : DataLoader
 
 	def __init__(self):
-		self.load_data(n = 30000)
+		self.load_data(n = 1000)
 		self.encoder = Encoder(len(self.vocab)).to(device)
 		self.decoder = Decoder(len(self.vocab)).to(device)
 		self.optimiser = Adam(list(self.encoder.parameters()) + list(self.decoder.parameters()), lr = 1e-3, weight_decay = 1e-3)
@@ -73,7 +74,7 @@ class Runner:
 		wandb.watch(self.encoder, log = 'all', log_freq = 100)
 		wandb.watch(self.decoder, log = 'all', log_freq = 100)
 
-	def load_data(self, n = None, batch_size = 128) -> DataLoader:
+	def load_data(self, n = None, batch_size = 256) -> DataLoader:
 		print('Loading data', file = sys.stderr)
 		self.vocab = pickle.load(open('vocab.pickle', 'rb'))
 
@@ -98,20 +99,26 @@ class Runner:
 
 	def run_part(self, text : tensor, high : tensor):
 		self.optimiser.zero_grad()
-		encoder_output, encoder_hidden = self.encoder(text)
+		encoder_output, (encoder_hidden, encoder_cell) = self.encoder(text)
 
 		assert all(high[:, 0] == self.vocab[sos])
-		decoder_input = high[:, 0]
-		decoder_hidden = encoder_hidden
+		decoder_input = high[:, 0].unsqueeze(1)
+		decoder_hidden = (encoder_hidden, encoder_cell)
 
 		loss = tensor(0.).to(device)
 		text_len = text.size(1)
 		high_len = high.size(1)
 		for t in range(1, high_len):
-			di1 = decoder_input.unsqueeze(1)
-			decoder_output, decoder_hidden = self.decoder(di1, decoder_hidden)
+			decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden)
+			topv, topi = decoder_output.topk(1)
+			decoder_input = topi.squeeze(-1).detach()
+
+			print(f'In loop it is {decoder_input.shape}', file = sys.stderr)
+			# if decoder_input.dim() == 0:
+				# decoder_input = decoder_input.unsqueeze(0)  # Make it 1D if it's scalar
+			# decoder_input = decoder_input.unsqueeze(1)  # Ensure the shape is [batch_size, 1]
+
 			loss += self.criterion(decoder_output.squeeze(1), high[:, t])
-			decoder_input = high[:, t]
 
 		loss.backward()
 		self.optimiser.step()
@@ -144,7 +151,7 @@ def main():
 
 	epochs = 1001
 	last_val_loss = float('inf')
-	for e in range(epochs):
+	for e in range(1, epochs):
 		print(f'Training epoch {e}', file = sys.stderr)
 		train_loss = runner.run_epoch(runner.loader)
 
