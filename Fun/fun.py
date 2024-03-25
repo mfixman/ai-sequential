@@ -25,13 +25,13 @@ class Encoder(nn.Module):
 		self.embedding = nn.Embedding(
 				num_embeddings = len_vocab,
 				embedding_dim = 256,
-		)
+				)
 		self.gru = nn.GRU(
 				input_size = 256,
 				hidden_size = 128,
 				num_layers = 1,
 				batch_first = True,
-		)
+				)
 
 	def forward(self, input : tensor) -> tuple[tensor, tensor]:
 		x = self.embedding(input)
@@ -61,6 +61,8 @@ class Runner:
 	decoder : Decoder
 	optimiser : Optimizer
 	criterion : nn.CrossEntropyLoss
+	loader : DataLoader
+	val_loader : DataLoader
 
 	def __init__(self):
 		self.load_data(n = 30)
@@ -87,11 +89,12 @@ class Runner:
 
 		tn = [tensor(y + [self.vocab[pad]] * (self.text_len - len(y))) for y in train_text]
 		th = [tensor(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in train_high]
-
 		self.loader = DataLoader(list(zip(tn, th)), batch_size = batch_size, shuffle = True)
 
-		self.val_text = tensor([(float(y) + [float(self.vocab[pad])] * (self.text_len - len(y))) for y in val_text], requires_grad = True)
-		self.val_high = tensor([(float(y) + [float(self.vocab[pad])] * (self.high_len - len(y))) for y in val_high], requires_grad = True)
+		vn = [(y + [self.vocab[pad]] * (self.text_len - len(y))) for y in val_text]
+		vh = [(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in val_high]
+		self.val_loader = DataLoader(list(zip(vn, vh)), batch_size = batch_size, shuffle = True)
+
 		print('Loaded data', file = sys.stderr)
 
 	def run_part(self, text : tensor, high : tensor):
@@ -128,18 +131,12 @@ class Runner:
 		artifact.add_file(f'{name}.pth')
 		wandb.log_artifact(artifact)
 
-	def run_epoch(self):
+	def run_epoch(self, loader):
 		loss = 0
-		for e, (text, high) in enumerate(self.loader):
+		for e, (text, high) in enumerate(loader):
 			loss += self.run_part(text.to(device), high.to(device))
 
 		return loss
-	
-	def val_loss(self):
-		with torch.no_grad():
-			val_loss = self.run_part(self.val_text.to(device), self.val_high.to(device))
-
-		return val_loss
 
 def main():
 	torch.autograd.set_detect_anomaly(True)
@@ -149,8 +146,8 @@ def main():
 	epochs = 1001
 	last_val_loss = float('inf')
 	for e in range(epochs):
-		train_loss = runner.run_epoch()
-		val_loss = runner.val_loss()
+		train_loss = runner.run_epoch(runner.loader)
+		val_loss = runner.run_epoch(runner.val_loader)
 
 		print(f'Epoch {e}: train loss = {train_loss}, val loss = {val_loss}', file = sys.stderr)
 		wandb.log({'Epoch': e, 'Train Loss': train_loss, 'Val Loss': val_loss})
