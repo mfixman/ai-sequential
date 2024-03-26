@@ -24,7 +24,7 @@ class Encoder(nn.Module):
             num_embeddings = len_vocab,
             embedding_dim = 256 // quotient,
         )
-		self.dropout = nn.Dropout(p = 0.3)
+        self.dropout = nn.Dropout(p = 0.3)
         self.lstm = nn.LSTM(
             input_size = 256 // quotient,
             hidden_size = 128 // quotient,
@@ -34,7 +34,7 @@ class Encoder(nn.Module):
 
     def forward(self, input : tensor) -> tuple[tensor, tensor]:
         x = self.embedding(input)
-		x = self.dropout(x)
+        x = self.dropout(x)
         output, (hidden, cell) = self.lstm(x)
         return output, (hidden, cell)
 
