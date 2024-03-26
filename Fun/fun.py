@@ -152,7 +152,7 @@ def main():
 
     config = dict(
         n = 10000,
-        batch_size = 64,
+        batch_size = 32,
         learner = 'lstm',
         quotient = 4,
         epochs = 101,
