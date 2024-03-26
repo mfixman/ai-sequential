@@ -10,8 +10,6 @@ from torch.optim import Adam, Optimizer
 import sys
 import pickle
 
-from typing import List, Dict, Tuple
-
 sos = '<SOS>'
 eos = '<EOS>'
 pad = '<PAD>'
@@ -26,6 +24,7 @@ class Encoder(nn.Module):
             num_embeddings = len_vocab,
             embedding_dim = 256 // quotient,
         )
+		self.dropout = nn.Dropout(p = 0.3)
         self.lstm = nn.LSTM(
             input_size = 256 // quotient,
             hidden_size = 128 // quotient,
@@ -35,6 +34,7 @@ class Encoder(nn.Module):
 
     def forward(self, input : tensor) -> tuple[tensor, tensor]:
         x = self.embedding(input)
+		x = self.dropout(x)
         output, (hidden, cell) = self.lstm(x)
         return output, (hidden, cell)
 
@@ -145,16 +145,14 @@ class Runner:
             else:
                 loss += self.run_part(text.to(device), high.to(device))
 
-        return loss
+        return loss / len(loader.dataset)
 
 def main():
-    torch.autograd.set_detect_anomaly(True)
-
     config = dict(
-        n = 10000,
-        batch_size = 32,
+        n = 20000,
+        batch_size = 8,
         learner = 'lstm',
-        quotient = 4,
+        quotient = 2,
         epochs = 101,
     )
     wandb.init(project = 'fun', config = config)
@@ -173,7 +171,7 @@ def main():
         print(f'Epoch {e}: train loss = {train_loss}, val loss = {val_loss}', file = sys.stderr)
         wandb.log({'Epoch': e, 'Train Loss': train_loss, 'Val Loss': val_loss})
 
-        if e % 10 == 0 and val_loss < last_val_loss:
+        if val_loss < last_val_loss:
             print('Best loss found!', file = sys.stderr)
             runner.log_models()
 
