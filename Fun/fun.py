@@ -22,11 +22,11 @@ class Encoder(nn.Module):
         super().__init__()
         self.embedding = nn.Embedding(
             num_embeddings = len_vocab,
-            embedding_dim = 256 // quotient,
+            embedding_dim = 256 // 2 // quotient,
         )
         self.dropout = nn.Dropout(p = 0.3)
         self.lstm = nn.LSTM(
-            input_size = 256 // quotient,
+            input_size = 256 // 2 // quotient,
             hidden_size = 128 // quotient,
             num_layers = 1,
             batch_first = True,
@@ -45,14 +45,14 @@ class Decoder(nn.Module):
         self.relu = nn.ReLU()
         self.lstm = nn.LSTM(input_size = 256 // quotient, hidden_size = 128 // quotient, batch_first = True)
         self.out = nn.Linear(128 // quotient, 128 // quotient)
-        self.out2 = nn.Linear(128 // quotient, len_vocab)
+        # self.out2 = nn.Linear(128 // quotient, len_vocab)
 
     def forward(self, input : tensor, hidden : tensor):
         x = self.embedding(input)
         x, (h, c) = self.lstm(x, hidden)
         x = self.out(x)
         x = self.relu(x)
-        x = self.out2(x)
+        # x = self.out2(x)
         return x, (h, c)
 
 class Runner:
@@ -149,9 +149,9 @@ class Runner:
 
 def main():
     config = dict(
-        n = 20000,
-        batch_size = 8,
-        learner = 'lstm',
+        n = 10000,
+        batch_size = 32,
+        learner = 'lstm, half embedding, one linear',
         quotient = 2,
         epochs = 101,
     )
