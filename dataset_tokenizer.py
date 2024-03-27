@@ -166,7 +166,7 @@ if __name__ == '__main__':
     print("=======================================")
 
     # Tokenization
-    #subword_tokenizer.tokenize_dataset()
+    subword_tokenizer.tokenize_dataset()
 
     #tokenizer = DatasetTokenizer('tokenized_data')
     #tokenizer.tokenize_dataset()

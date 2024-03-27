@@ -1,14 +1,16 @@
-import torch
-import torch.nn as nn
-import wandb
-from wandb import Artifact
-
-from torch import tensor, Tensor
-from torch.utils.data import DataLoader
-from torch.optim import Adam, Optimizer
-
-import sys
+import logging
 import pickle
+import random
+import sys
+import torch
+import wandb
+import wandb
+
+from torch import nn, tensor, Tensor
+from torch.optim import Adam, Optimizer
+from torch.utils.data import DataLoader
+from wandb import Artifact
+from wandb import Artifact
 
 sos = '<SOS>'
 eos = '<EOS>'
@@ -42,17 +44,13 @@ class Decoder(nn.Module):
     def __init__(self, len_vocab : int, quotient = 1):
         super().__init__()
         self.embedding = nn.Embedding(num_embeddings = len_vocab, embedding_dim = 256 // quotient)
-        # self.relu = nn.ReLU()
         self.lstm = nn.LSTM(input_size = 256 // quotient, hidden_size = 128 // quotient, batch_first = True)
-        # self.out = nn.Linear(128 // quotient, 128 // quotient)
         self.out = nn.Linear(128 // quotient, len_vocab)
 
     def forward(self, input : Tensor, hidden : Tensor):
         x = self.embedding(input)
         x, (h, c) = self.lstm(x, hidden)
         x = self.out(x)
-        # x = self.relu(x)
-        # x = self.out(x)
         return x, (h, c)
 
 class Runner:
@@ -95,7 +93,7 @@ class Runner:
         vh = [tensor(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in val_high]
         self.val_loader = DataLoader(list(zip(vn, vh))[:10 * batch_size], batch_size = batch_size, shuffle = True)
 
-        print('Loaded data', file = sys.stderr)
+        logging.info('Loaded data')
 
     def run_part(self, text : Tensor, high : Tensor):
         _, hidden = self.encoder(text)
@@ -124,7 +122,7 @@ class Runner:
         loss = 0
         for e, (text, high) in enumerate(loader):
             if e % 50 == 0:
-                print(f'Running part {e}', file = sys.stderr)
+                logging.info(f'Running part {e}')
 
             if training:
                 loss += self.train(text.to(device), high.to(device))
@@ -145,8 +143,8 @@ class Runner:
 
 def main():
     config = dict(
-        n = 10000,
-        batch_size = 32,
+        n = 10,
+        batch_size = 2,
         learner = 'lstm, half embedding, one linear',
         quotient = 2,
         epochs = 101,
@@ -157,10 +155,10 @@ def main():
     epochs = config['epochs']
     best_val_loss = float('inf')
     for e in range(1, epochs):
-        print(f'Training epoch {e}', file = sys.stderr)
+        logging.info(f'Training epoch {e}')
         train_loss = runner.run_epoch(runner.loader, training = True)
 
-        print(f'Validation epoch {e}', file = sys.stderr)
+        logging.info(f'Validation epoch {e}')
         with torch.no_grad():
             val_loss = runner.run_epoch(runner.val_loader, training = False)
 
