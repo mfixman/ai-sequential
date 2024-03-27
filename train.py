@@ -78,6 +78,9 @@ def train_loop(model, train_loader, criterion, optimizer, clip=1):
             trg = trg[1:].reshape(-1)
 
             loss = criterion(output, trg)
+            l1_lambda = 0.00001
+            l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
+            loss += l1_lambda*l1_norm
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
             optimizer.step()
@@ -86,7 +89,7 @@ def train_loop(model, train_loader, criterion, optimizer, clip=1):
         avg_loss = epoch_loss / len(train_loader)
         return avg_loss
 
-def validation_loop(model, val_loader, criterion, clip=1):
+def validation_loop(model, val_loader, criterion):
         model.eval()
         epoch_loss = 0
         with torch.no_grad():
@@ -103,6 +106,9 @@ def validation_loop(model, val_loader, criterion, clip=1):
                 trg = trg[1:].reshape(-1)
 
                 loss = criterion(output, trg)
+                l1_lambda = 0.00001
+                l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
+                loss += l1_lambda*l1_norm
                 epoch_loss += loss.item()
 
             avg_loss = epoch_loss / len(val_loader)
