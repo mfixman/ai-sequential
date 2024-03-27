@@ -4,14 +4,14 @@ data_settings:
     special_tokens: ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']
 seq2seq_params:
     model_name: 'seq2seq'
-    encoder_embedding_dim: 128
+    encoder_embedding_dim: 256
     decoder_embedding_dim: 256
     hidden_dim: 512
-    num_layers: 2
+    num_layers: 3
     dropout: 0.5
 train:
-    epochs: 2
-    batch_size: 3
+    epochs: 10
+    batch_size: 4
     learning_rate: 0.001
     checkpoint_folder: 'checkpoints'
     load_checkpoint : False

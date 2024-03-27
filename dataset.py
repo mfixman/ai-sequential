@@ -72,9 +72,10 @@ if __name__ == '__main__':
 
     subword_tokenizer = SubwordDatasetTokenizer(model_name='bert-base-uncased')
     for text, summary in dataloader:
-        print(f"Text_shape: {text.shape}, Text: {text.transpose(0,1)}")
-        text_detokenized = subword_tokenizer.tokenizer.decode(text.transpose(0,1)[0].cpu().numpy())
-        summary_detokenized = subword_tokenizer.tokenizer.decode(summary.transpose(0,1)[0].cpu().numpy())
+        print(f"Text_shape: {text.shape}")
+        text_detokenized = subword_tokenizer.tokenizer.decode(text[0].cpu().numpy())
+        summary_detokenized = subword_tokenizer.tokenizer.decode(summary[0].cpu().numpy())
         print(f"\nText_loader: {text}\nText: {text_detokenized}")
         print(f"Sum_loader: {summary}\nSum: {summary_detokenized}\n")
+        #print(dataset.vocabulary['give'])
         break

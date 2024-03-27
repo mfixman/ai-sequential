@@ -1,9 +1,7 @@
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import DataLoader
-from utils import load_config, collate_fn
-from models import Encoder, Decoder, Seq2Seq
+from utils import load_config, collate_fn, plot_attention
+from models import EncoderLSTM, DecoderLSTM, Seq2Seq, AttDecoderLSTM, AttSeq2Seq
 from dataset import NewsDataset
 from dataset_tokenizer import SubwordDatasetTokenizer
 
@@ -19,9 +17,9 @@ def infer(data_settings, model_settings, inference_settings):
     # Model
     INPUT_DIM = len(test_dataset.vocabulary)
     OUTPUT_DIM = len(test_dataset.vocabulary)
-    encoder = Encoder(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
-    decoder = Decoder(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['dropout'])
-    model = Seq2Seq(encoder, decoder, device)
+    encoder = EncoderLSTM(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+    decoder = AttDecoderLSTM(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+    model = AttSeq2Seq(encoder, decoder, device)
 
     # Loading checkpoint
     if inference_settings['load_checkpoint']:
@@ -40,19 +38,23 @@ def infer(data_settings, model_settings, inference_settings):
     for i, (src, trg) in enumerate(test_loader):
         src, trg = src.to(device), trg.to(device)
 
-        output = model(src, trg)
+        output, out_seq, attentions = model(src, trg)
 
-        #print(f"Target: {trg}")
-        #print(f"\nOutput: {output}")
+        print(f"Source_shape: {src.shape}\n  Source: {src[0]}")
+        print(f"Target_shape: {trg.shape}\n  Target: {trg[0]}")
+        print(f"Output Shape: {output.shape}\n Output: {output[0]}")
 
-        output_token_ids = torch.argmax(output, dim=2)
-        generated_text = subword_tokenizer.tokenizer.decode(output_token_ids[0].cpu().numpy(), skip_special_tokens=True)
+        news_text = subword_tokenizer.tokenizer.decode(src[0].cpu().numpy(), skip_special_tokens=True)
         target_text = subword_tokenizer.tokenizer.decode(trg[0].cpu().numpy(), skip_special_tokens=True)
 
+        generated_text = subword_tokenizer.tokenizer.decode(out_seq[0].cpu().numpy(), skip_special_tokens=True)
+        
+        print(f"News Text: {news_text}\n")
         print(f'Target Text: {target_text}\n')
         print(f'Generated Text: {generated_text}\n')
-        break
 
+        plot_attention(input_tokens=src[0], output_tokens=out_seq[0], attentions=attentions[0])
+        break
 
 def main():
     config = load_config()

@@ -3,18 +3,18 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from utils import load_config, collate_fn
-from models import Encoder, Decoder, Seq2Seq
+from models import EncoderLSTM, DecoderLSTM, Seq2Seq, AttDecoderLSTM, AttSeq2Seq
 from dataset import NewsDataset
 from logger import Logger
 import os
 
 torch.manual_seed(42)
-os.environ['https_proxy'] = "http://hpc-proxy00.city.ac.uk:3128" # Proxy to train with hyperion
+#os.environ['https_proxy'] = "http://hpc-proxy00.city.ac.uk:3128" # Proxy to train with hyperion
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(data_settings, model_settings, train_settings, logger):
     # Dataset
-    train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='train', vocabulary_file=data_settings['vocabulary_path'])
+    train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='test', vocabulary_file=data_settings['vocabulary_path'])
     val_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='validation', vocabulary_file=data_settings['vocabulary_path'])
     train_loader = DataLoader(train_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
     val_loader = DataLoader(val_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
@@ -23,9 +23,11 @@ def train(data_settings, model_settings, train_settings, logger):
     INPUT_DIM = len(train_dataset.vocabulary)
     OUTPUT_DIM = len(train_dataset.vocabulary)
     print(f"\nVocabulary size: {INPUT_DIM}\n")
-    encoder = Encoder(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
-    decoder = Decoder(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['dropout'])
-    model = Seq2Seq(encoder, decoder, device).to(device)
+    encoder = EncoderLSTM(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+    #decoder = DecoderLSTM(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'])
+    #model = Seq2Seq(encoder, decoder, device).to(device)
+    decoder = AttDecoderLSTM(OUTPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+    model = AttSeq2Seq(encoder, decoder, device).to(device)
     
     # Optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=train_settings['learning_rate'])
@@ -66,7 +68,7 @@ def train_loop(model, train_loader, criterion, optimizer, clip=1):
             src, trg = src.to(device), trg.to(device)
 
             optimizer.zero_grad()
-            output = model(src, trg)
+            output, out_seq, attentions = model(src, trg)
 
             # trg shape: [batch_size, trg_len]
             # output shape: [trg_len, batch_size, voc_size] ??
@@ -91,7 +93,7 @@ def validation_loop(model, val_loader, criterion, clip=1):
             for i, (src, trg) in enumerate(val_loader):
                 src, trg = src.to(device), trg.to(device)
 
-                output = model(src, trg)
+                output, out_seq, attentions = model(src, trg)
 
                 # trg shape: [batch_size, trg_len]
                 # output shape: [trg_len, batch_size, voc_size] ??
@@ -101,8 +103,6 @@ def validation_loop(model, val_loader, criterion, clip=1):
                 trg = trg[1:].reshape(-1)
 
                 loss = criterion(output, trg)
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
                 epoch_loss += loss.item()
 
             avg_loss = epoch_loss / len(val_loader)
@@ -122,6 +122,10 @@ def main():
 
     print("\n############## MODEL SETTINGS ##############")
     print(model_setting)
+    print()
+
+    print("\n############## TRAINING SETTINGS ##############")
+    print(train_setting)
     print()
     
     train(data_setting, model_setting, train_setting, logger)
