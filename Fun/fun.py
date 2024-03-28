@@ -73,7 +73,7 @@ class Runner:
         wandb.watch(self.decoder, log = 'all', log_freq = 100)
 
     def load_data(self, n = None, batch_size = 256) -> DataLoader:
-        print('Loading data', file = sys.stderr)
+        logging.info('Loading data')
         self.vocab = pickle.load(open('pickles/vocab.pickle', 'rb'))
 
         train_text = pickle.load(open('pickles/train_text.pickle', 'rb'))[:n]
@@ -104,10 +104,10 @@ class Runner:
         loss = tensor(0.).to(device)
         for t in range(1, self.high_len):
             output, hidden = self.decoder(input, hidden)
-            _, topi = decoder_output.topk(1)
+            _, topi = output.topk(1)
             input = topi.squeeze(-1).detach()
 
-            loss += self.criterion(decoder_output.squeeze(1), high[:, t])
+            loss += self.criterion(output.squeeze(1), high[:, t])
 
         return loss
 
@@ -162,11 +162,11 @@ def main():
         with torch.no_grad():
             val_loss = runner.run_epoch(runner.val_loader, training = False)
 
-        print(f'Epoch {e}: train loss = {train_loss}, val loss = {val_loss}', file = sys.stderr)
+        logging.info(f'Epoch {e}: train loss = {train_loss}, val loss = {val_loss}')
         wandb.log({'Epoch': e, 'Train Loss': train_loss, 'Val Loss': val_loss})
 
         if val_loss < best_val_loss:
-            print('Best loss found!', file = sys.stderr)
+            logging.info('Best loss found!')
             runner.log_models()
             best_val_loss = val_loss
 
