@@ -24,12 +24,12 @@ class Encoder(nn.Module):
         super().__init__()
         self.embedding = nn.Embedding(
             num_embeddings = len_vocab,
-            embedding_dim = 256 // quotient,
+            embedding_dim = 512 // quotient,
         )
         self.dropout = nn.Dropout(p = 0.3)
         self.lstm = nn.LSTM(
-            input_size = 256 // quotient,
-            hidden_size = 128 // quotient,
+            input_size = 512 // quotient,
+            hidden_size = 256 // quotient,
             num_layers = 1,
             batch_first = True,
         )
@@ -43,9 +43,9 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, len_vocab : int, quotient = 1):
         super().__init__()
-        self.embedding = nn.Embedding(num_embeddings = len_vocab, embedding_dim = 256 // quotient)
-        self.lstm = nn.LSTM(input_size = 256 // quotient, hidden_size = 128 // quotient, batch_first = True)
-        self.out = nn.Linear(128 // quotient, len_vocab)
+        self.embedding = nn.Embedding(num_embeddings = len_vocab, embedding_dim = 512 // quotient)
+        self.lstm = nn.LSTM(input_size = 512 // quotient, hidden_size = 256 // quotient, batch_first = True)
+        self.out = nn.Linear(256 // quotient, len_vocab)
 
     def forward(self, input : Tensor, hidden : Tensor):
         x = self.embedding(input)
@@ -156,18 +156,18 @@ class Runner:
 
 def main():
     config = dict(
-        n = 10000,
-        batch_size = 32,
+        n = None,
+        batch_size = 290,
         learner = 'lstm, teacher forcing',
         quotient = 1,
         epochs = 101,
         postfix = '',
-		loss = 'Categorical Cross-Entropy',
+        loss = 'Categorical Cross-Entropy',
     )
     wandb.init(project = 'fun', config = config)
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s : %(message)s',
+        format='[%(asctime)s] %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
     )
 
@@ -183,7 +183,7 @@ def main():
         with torch.no_grad():
             val_loss = runner.run_epoch(runner.val_loader, training = False)
 
-        logging.info(f'Epoch {e}: train loss = {train_loss}, val loss = {val_loss}')
+        logging.info(f'Epoch {e}: train loss = {train_loss:g}, val loss = {val_loss:g}')
         wandb.log({'Epoch': e, 'Train Loss': train_loss, 'Val Loss': val_loss})
 
         if val_loss < best_val_loss:
