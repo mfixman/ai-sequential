@@ -1,11 +1,11 @@
 import logging
 import pickle
-import random
 import sys
 import torch
 import wandb
 import wandb
 
+from numpy import random
 from torch import nn, tensor, Tensor
 from torch.optim import Adam, Optimizer
 from torch.utils.data import DataLoader
@@ -24,11 +24,11 @@ class Encoder(nn.Module):
         super().__init__()
         self.embedding = nn.Embedding(
             num_embeddings = len_vocab,
-            embedding_dim = 256 // 2 // quotient,
+            embedding_dim = 256 // quotient,
         )
         self.dropout = nn.Dropout(p = 0.3)
         self.lstm = nn.LSTM(
-            input_size = 256 // 2 // quotient,
+            input_size = 256 // quotient,
             hidden_size = 128 // quotient,
             num_layers = 1,
             batch_first = True,
@@ -61,51 +61,63 @@ class Runner:
     criterion : nn.CrossEntropyLoss
     val_loader : DataLoader
 
-    def __init__(self, n, batch_size, quotient):
-        self.load_data(n = n, batch_size = batch_size)
-        self.quotient = quotient
-        self.encoder = Encoder(len(self.vocab), quotient).to(device)
-        self.decoder = Decoder(len(self.vocab), quotient).to(device)
+    teacher_p : float
+
+    def __init__(self, n, config):
+        self.config = config
+
+        self.load_data()
+        self.encoder = Encoder(len(self.vocab), config['quotient']).to(device)
+        self.decoder = Decoder(len(self.vocab), config['quotient']).to(device)
         self.optimiser = Adam(list(self.encoder.parameters()) + list(self.decoder.parameters()), lr = 1e-3, weight_decay = 1e-3)
         self.criterion = nn.CrossEntropyLoss(reduction = 'sum', ignore_index = self.vocab[pad]).to(device)
+        self.teacher_p = 1
 
         wandb.watch(self.encoder, log = 'all', log_freq = 100)
         wandb.watch(self.decoder, log = 'all', log_freq = 100)
 
-    def load_data(self, n = None, batch_size = 256) -> DataLoader:
+    def load_data(self) -> DataLoader:
         logging.info('Loading data')
         self.vocab = pickle.load(open('pickles/vocab.pickle', 'rb'))
 
-        train_text = pickle.load(open('pickles/train_text.pickle', 'rb'))[:n]
-        train_high = pickle.load(open('pickles/train_high.pickle', 'rb'))[:n]
+        n = self.config['n']
+        postfix = self.config['postfix']
+        train_text = pickle.load(open('pickles/train_text' + postfix + '.pickle', 'rb'))[:n]
+        train_high = pickle.load(open('pickles/train_high' + postfix + '.pickle', 'rb'))[:n]
 
-        val_text = pickle.load(open('pickles/val_text.pickle', 'rb'))[:n]
-        val_high = pickle.load(open('pickles/val_high.pickle', 'rb'))[:n]
+        val_text = pickle.load(open('pickles/validation_text' + postfix + '.pickle', 'rb'))[:n]
+        val_high = pickle.load(open('pickles/validation_high' + postfix + '.pickle', 'rb'))[:n]
 
         self.text_len = max(max(len(x) for x in train_text), max(len(x) for x in val_text))
         self.high_len = max(max(len(x) for x in train_high), max(len(x) for x in val_high))
 
         tn = [tensor(y + [self.vocab[pad]] * (self.text_len - len(y))) for y in train_text]
         th = [tensor(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in train_high]
-        self.loader = DataLoader(list(zip(tn, th)), batch_size = batch_size, shuffle = True)
+        self.loader = DataLoader(list(zip(tn, th)), batch_size = self.config['batch_size'], shuffle = True)
 
         vn = [tensor(y + [self.vocab[pad]] * (self.text_len - len(y))) for y in val_text]
         vh = [tensor(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in val_high]
-        self.val_loader = DataLoader(list(zip(vn, vh))[:10 * batch_size], batch_size = batch_size, shuffle = True)
+        self.val_loader = DataLoader(list(zip(vn, vh))[:50 * self.config['batch_size']], batch_size = self.config['batch_size'], shuffle = True)
 
         logging.info('Loaded data')
 
     def run_part(self, text : Tensor, high : Tensor):
         _, hidden = self.encoder(text)
 
-        assert all(high[:, 0] == self.vocab[sos])
+        # assert all(high[:, 0] == self.vocab[sos])
         input = high[:, 0].unsqueeze(1)
 
+        student = self.teacher_p < random.random(self.high_len)
         loss = tensor(0.).to(device)
         for t in range(1, self.high_len):
             output, hidden = self.decoder(input, hidden)
-            _, topi = output.topk(1)
-            input = topi.squeeze(-1).detach()
+
+            if student[t]:
+                topv, topi = [x.squeeze() for x in output.topk(3)]
+                choice = torch.multinomial(topv.squeeze(), 1)
+                input = topi.gather(1, choice).detach()
+            else:
+                input = high[:, t - 1].unsqueeze(1)
 
             loss += self.criterion(output.squeeze(1), high[:, t])
 
@@ -129,13 +141,14 @@ class Runner:
             else:
                 loss += self.run_part(text.to(device), high.to(device))
 
+        self.teacher_p *= .9
         return loss / len(loader.dataset)
 
     def log_models(self):
         torch.save(self.encoder.state_dict(), 'encoder.pth')
         torch.save(self.decoder.state_dict(), 'decoder.pth')
 
-        artifact = Artifact(f'weights', type = 'model', metadata = {'quotient': self.quotient})
+        artifact = Artifact(f'fun_weights', type = 'model', metadata = self.config)
         artifact.add_file('encoder.pth')
         artifact.add_file('decoder.pth')
 
@@ -143,14 +156,21 @@ class Runner:
 
 def main():
     config = dict(
-        n = 10,
-        batch_size = 2,
-        learner = 'lstm, half embedding, one linear',
-        quotient = 2,
+        n = 10000,
+        batch_size = 32,
+        learner = 'lstm, teacher forcing',
+        quotient = 1,
         epochs = 101,
+        postfix = '',
     )
     wandb.init(project = 'fun', config = config)
-    runner = Runner(n = config['n'], batch_size = config['batch_size'], quotient = config['quotient'])
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s : %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
+
+    runner = Runner(n = config['n'], config = config)
 
     epochs = config['epochs']
     best_val_loss = float('inf')
