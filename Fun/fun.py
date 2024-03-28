@@ -93,6 +93,9 @@ class Runner:
         val_data = list(zip(tensor(val_text), tensor(val_high)))[:50 * self.config['batch_size']]
         self.val_loader = DataLoader(val_data, batch_size = self.config['batch_size'], shuffle = True)
 
+        self.text_len = len(train_text[0])
+        self.high_len = len(train_high[0])
+
         logging.info('Loaded data')
 
     def run_part(self, text : Tensor, high : Tensor):
@@ -155,7 +158,7 @@ def main():
         learner = 'lstm, teacher forcing',
         quotient = 1,
         epochs = 101,
-        postfix = '',
+        postfix = '_10',
         loss = 'Categorical Cross-Entropy',
     )
     wandb.init(project = 'fun', config = config)
