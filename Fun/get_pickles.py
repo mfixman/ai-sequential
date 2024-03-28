@@ -5,7 +5,6 @@ import os
 
 from collections import defaultdict
 from itertools import chain
-from multiprocessing import Pool, Lock
 from torchtext.transforms import BERTTokenizer
 from nltk.corpus import stopwords, gutenberg
 
@@ -53,11 +52,8 @@ class Tokeniser:
         words = set(word for phrase in data for word in phrase)
 
         print('Adding to vocab', file = sys.stderr)
-        global lock
-        lock.acquire()
         self.vocab_set |= words
         self.lens[part] = max(self.lens[part], max(len(x) for x in data))
-        lock.release()
 
         print('Finished!', file = sys.stderr)
         return data
@@ -86,7 +82,7 @@ class Tokeniser:
 
     def fix(self, name : str, phrase : list[str]) -> list[str]:
         remaining = self.lens[self.get_part(name)] - len(phrase)
-        return [sos] + phrase + remaining * [pad] + [eos]
+        return [sos] + phrase + [eos] + remaining * [pad]
 
     def vocabularise(self, name_tokens : tuple[str, list[list[str]]]):
         (name, tokens) = name_tokens
@@ -95,9 +91,6 @@ class Tokeniser:
         return [[self.vocab[word] for word in self.fix(name, phrase)] for phrase in tokens]
 
 def main():
-    global lock
-    lock = Lock()
-
     dataset = datasets.load_dataset('cnn_dailymail', '3.0.0')
     tokeniser = Tokeniser()
 
