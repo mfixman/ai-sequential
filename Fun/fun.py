@@ -82,22 +82,16 @@ class Runner:
 
         n = self.config['n']
         postfix = self.config['postfix']
+
         train_text = pickle.load(open('pickles/train_text' + postfix + '.pickle', 'rb'))[:n]
         train_high = pickle.load(open('pickles/train_high' + postfix + '.pickle', 'rb'))[:n]
+        train_data = list(zip(tensor(train_text), tensor(train_high)))
+        self.loader = DataLoader(train_data, batch_size = self.config['batch_size'], shuffle = True)
 
         val_text = pickle.load(open('pickles/validation_text' + postfix + '.pickle', 'rb'))[:n]
         val_high = pickle.load(open('pickles/validation_high' + postfix + '.pickle', 'rb'))[:n]
-
-        self.text_len = max(max(len(x) for x in train_text), max(len(x) for x in val_text))
-        self.high_len = max(max(len(x) for x in train_high), max(len(x) for x in val_high))
-
-        tn = [tensor(y + [self.vocab[pad]] * (self.text_len - len(y))) for y in train_text]
-        th = [tensor(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in train_high]
-        self.loader = DataLoader(list(zip(tn, th)), batch_size = self.config['batch_size'], shuffle = True)
-
-        vn = [tensor(y + [self.vocab[pad]] * (self.text_len - len(y))) for y in val_text]
-        vh = [tensor(y + [self.vocab[pad]] * (self.high_len - len(y))) for y in val_high]
-        self.val_loader = DataLoader(list(zip(vn, vh))[:50 * self.config['batch_size']], batch_size = self.config['batch_size'], shuffle = True)
+        val_data = list(zip(tensor(val_text), tensor(val_high)))[:50 * self.config['batch_size']]
+        self.val_loader = DataLoader(val_data, batch_size = self.config['batch_size'], shuffle = True)
 
         logging.info('Loaded data')
 
