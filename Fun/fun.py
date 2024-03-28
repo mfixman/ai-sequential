@@ -153,8 +153,8 @@ class Runner:
 
 def main():
     config = dict(
-        n = None,
-        batch_size = 290,
+        n = 100000,
+        batch_size = 300,
         learner = 'lstm, teacher forcing',
         quotient = 1,
         epochs = 101,
