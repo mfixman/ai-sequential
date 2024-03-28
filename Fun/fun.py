@@ -162,6 +162,7 @@ def main():
         quotient = 1,
         epochs = 101,
         postfix = '',
+		loss = 'Categorical Cross-Entropy',
     )
     wandb.init(project = 'fun', config = config)
     logging.basicConfig(
