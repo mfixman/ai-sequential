@@ -20,11 +20,12 @@ special = {sos, eos, pad, unk}
 device = 'cuda'
 
 class Encoder(nn.Module):
-    def __init__(self, len_vocab : int, quotient = 1):
+    def __init__(self, len_vocab : int, quotient = 1, padding_idx = None):
         super().__init__()
         self.embedding = nn.Embedding(
             num_embeddings = len_vocab,
             embedding_dim = 512 // quotient,
+            padding_idx = padding_idx,
         )
         self.dropout = nn.Dropout(p = 0.3)
         self.lstm = nn.LSTM(
@@ -41,9 +42,13 @@ class Encoder(nn.Module):
         return output, (hidden, cell)
 
 class Decoder(nn.Module):
-    def __init__(self, len_vocab : int, quotient = 1):
+    def __init__(self, len_vocab : int, quotient = 1, padding_idx = None):
         super().__init__()
-        self.embedding = nn.Embedding(num_embeddings = len_vocab, embedding_dim = 512 // quotient)
+        self.embedding = nn.Embedding(
+            num_embeddings = len_vocab,
+            embedding_dim = 512 // quotient,
+            padding_idx = padding_idx,
+        )
         self.lstm = nn.LSTM(input_size = 512 // quotient, hidden_size = 256 // quotient, batch_first = True)
         self.out = nn.Linear(256 // quotient, len_vocab)
 
@@ -67,8 +72,8 @@ class Runner:
         self.config = config
 
         self.load_data()
-        self.encoder = Encoder(len(self.vocab), config['quotient']).to(device)
-        self.decoder = Decoder(len(self.vocab), config['quotient']).to(device)
+        self.encoder = Encoder(len(self.vocab), config['quotient'], self.vocab[pad]).to(device)
+        self.decoder = Decoder(len(self.vocab), config['quotient'], self.vocab[pad]).to(device)
         self.optimiser = Adam(list(self.encoder.parameters()) + list(self.decoder.parameters()), lr = 1e-3, weight_decay = 1e-3)
         self.criterion = nn.CrossEntropyLoss(reduction = 'sum', ignore_index = self.vocab[pad]).to(device)
         self.teacher_p = 1
@@ -158,7 +163,7 @@ def main():
         learner = 'lstm, teacher forcing',
         quotient = 1,
         epochs = 101,
-        postfix = '_10',
+        postfix = '',
         loss = 'Categorical Cross-Entropy',
     )
     wandb.init(project = 'fun', config = config)
