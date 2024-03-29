@@ -20,7 +20,7 @@ def collate_fn(batch):
 def plot_attention(input_tokens, output_tokens, attentions):
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    cax = ax.matshow(attentions.cpu().numpy(), cmap='bone')
+    cax = ax.matshow(attentions.cpu().detach().numpy(), cmap='bone')
     fig.colorbar(cax)
 
     # Set up axes

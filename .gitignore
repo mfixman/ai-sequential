@@ -1,3 +1,7 @@
+# Test files
+transformer_models.py
+transformer.py
+
 # Tokenized dataset
 tokenized_data/
 tokenized_data_subword/

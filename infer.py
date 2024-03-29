@@ -1,11 +1,11 @@
 import torch
 from torch.utils.data import DataLoader
 from utils import load_config, collate_fn, plot_attention
-from models import EncoderLSTM, DecoderLSTM, Seq2Seq, AttDecoderLSTM, AttSeq2Seq
+from models import EncoderLSTM, DecoderLSTM, Seq2Seq, AttDecoderLSTM, AttSeq2Seq, Transformer
 from dataset import NewsDataset
 from dataset_tokenizer import SubwordDatasetTokenizer
 
-torch.manual_seed(42)
+torch.manual_seed(0)
 #os.environ['https_proxy'] = "http://hpc-proxy00.city.ac.uk:3128" # Proxy to train with hyperion
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -17,9 +17,26 @@ def infer(data_settings, model_settings, inference_settings):
     # Model
     INPUT_DIM = len(test_dataset.vocabulary)
     OUTPUT_DIM = len(test_dataset.vocabulary)
-    encoder = EncoderLSTM(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
-    decoder = AttDecoderLSTM(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
-    model = AttSeq2Seq(encoder, decoder, device)
+    PAD_IDX = test_dataset.vocabulary[data_settings['special_tokens'][0]]
+    if model_settings['model_name'] == 'seq2seq':
+        encoder = EncoderLSTM(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+        #decoder = DecoderLSTM(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'])
+        #model = Seq2Seq(encoder, decoder, device).to(device)
+        decoder = AttDecoderLSTM(OUTPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+        model = AttSeq2Seq(encoder, decoder, device).to(device)
+    elif model_settings['model_name'] == 'transformer':
+        model = Transformer(
+            vocab_size=OUTPUT_DIM, 
+            pad_idx=PAD_IDX, 
+            emb_size=model_settings['encoder_embedding_dim'], 
+            num_layers=model_settings['num_layers'], 
+            forward_expansion=4,
+            heads=8,
+            dropout=model_settings['dropout'],
+            device=device
+        ).to(device)
+    else:
+        raise ValueError("Selected model not available. Please choose between 'seq2seq' and 'transformer")
 
     # Loading checkpoint
     if inference_settings['load_checkpoint']:
@@ -38,7 +55,20 @@ def infer(data_settings, model_settings, inference_settings):
     for i, (src, trg) in enumerate(test_loader):
         src, trg = src.to(device), trg.to(device)
 
-        output, out_seq, attentions = model(src, trg)
+        print(f"Source_shape: {src.shape}\n  Source: {src}")
+        print(f"Target_shape: {trg.shape}\n  Target: {trg}")
+        #output, out_seq, attentions = model(src, trg)
+
+        trg = trg[:, :-1] #remove last token of trg
+        output = model(src, trg) # output shape: [trg_len, batch_size, vocab_size]
+        print(f"Out: {output.shape}\n{output}")
+        probs = torch.softmax(output, dim=-1)
+        k = 10
+        top_k_probs, top_k_indices = torch.topk(probs, k, dim=-1)
+        out_seq = torch.multinomial(top_k_probs.view(-1, k), 1).view(-1, output.shape[0]) # Sampling from the top k probabilities to get the indices
+        out_seq = torch.gather(top_k_indices, 2, out_seq.unsqueeze(-1)).squeeze(-1)
+        print(f"Out_seq: {out_seq.shape}\n{out_seq}")
+
 
         print(f"Source_shape: {src.shape}\n  Source: {src[0]}")
         print(f"Target_shape: {trg.shape}\n  Target: {trg[0]}")
@@ -53,7 +83,7 @@ def infer(data_settings, model_settings, inference_settings):
         print(f'Target Text: {target_text}\n')
         print(f'Generated Text: {generated_text}\n')
 
-        plot_attention(input_tokens=src[0], output_tokens=out_seq[0], attentions=attentions[0])
+        #plot_attention(input_tokens=src[0][:100], output_tokens=out_seq[0], attentions=attentions[0])
         break
 
 def main():
