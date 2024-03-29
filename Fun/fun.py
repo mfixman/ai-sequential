@@ -143,7 +143,7 @@ class Runner:
             else:
                 loss += self.run_part(text.to(device), high.to(device))
 
-        self.teacher_p *= .9
+        self.teacher_p *= self.config['d_teacher_p']
         return loss / len(loader.dataset)
 
     def log_models(self):
@@ -164,6 +164,7 @@ def main():
         quotient = 1,
         epochs = 101,
         postfix = '',
+        d_teacher_p = .96,
         loss = 'Categorical Cross-Entropy',
     )
     wandb.init(project = 'fun', config = config)
