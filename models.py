@@ -265,12 +265,9 @@ class AttSeq2Seq(nn.Module):
             top_k_probs, top_k_indices = torch.topk(probs, k, dim=-1)
             out_seq = torch.multinomial(top_k_probs.view(-1, k), 1).view(-1, output.shape[1]) # Sampling from the top k probabilities to get the indices
             out_seq = torch.gather(top_k_indices, 2, out_seq.unsqueeze(-1)).squeeze(-1) # Map back the indices to vocabulary index
-            print(f"Out seq: {out_seq.shape}\n{out_seq}")
-            input = (trg[:, t] if teacher_force else out_seq).detach()
-            """_, topi = output.squeeze(1).topk(10)
-            input = (trg[:, t] if teacher_force else topi.squeeze(-1)).detach()
-            #input = topi.squeeze(-1).detach()"""
 
+            input = (trg[:, t] if teacher_force else out_seq.squeeze(-1)).detach()
+            
             self.teacher_forcing_ratio -= (0.5 / 1000)  # Decrease by 0.0005 each step
             self.teacher_forcing_ratio = max(self.teacher_forcing_ratio, 0)  # Ensure it doesn't go below 0
 

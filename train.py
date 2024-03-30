@@ -89,7 +89,6 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1
             optimizer.zero_grad()
             
             if model_settings['model_name'] == 'seq2seq':
-                print("\nUsing model seq2seq!\n")
                 output, out_seq, attentions = model(src, trg)
                 # trg shape: [batch_size, trg_len]
                 #print(f"Output shape: {output.shape}\n Out: {output}")
