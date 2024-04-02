@@ -8,6 +8,8 @@ from dataset import NewsDataset
 from logger import Logger
 import os
 
+from transformer import Transformer as CustomTransformer
+
 torch.manual_seed(42)
 #os.environ['https_proxy'] = "http://hpc-proxy00.city.ac.uk:3128" # Proxy to train with hyperion
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -41,12 +43,23 @@ def train(data_settings, model_settings, train_settings, logger):
             dropout=model_settings['dropout'],
             device=device
         ).to(device)
+    elif model_settings['model_name'] == 'custom_transformer':
+        model = CustomTransformer(embed_dim=512,
+                            vocab_size=OUTPUT_DIM, 
+                            seq_length=2500,
+                            num_layers=model_settings['num_layers'],
+                            expansion_factor=4,
+                            n_heads=8).to(device)
     else:
         raise ValueError("Selected model not available. Please choose between 'seq2seq' and 'transformer")
 
+    # Parameter initialisation
+    for p in model.parameters():
+        if p.dim() > 1:
+            nn.init.xavier_uniform_(p)
     
     # Optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=train_settings['learning_rate'])
+    optimizer = torch.optim.Adam(model.parameters(), lr=train_settings['learning_rate'], betas=(0.9, 0.98), eps=1e-9)
 
     # Loading checkpoint
     epoch_start = 0
@@ -65,6 +78,7 @@ def train(data_settings, model_settings, train_settings, logger):
     # Train loop
     min_loss = float('inf')
     for epoch in range(epoch_start, train_settings['epochs']):
+        check_initial_loss(model, train_loader, criterion, model_settings)
         train_loss = train_loop(model, train_loader, criterion, optimizer, model_settings)
         val_loss = validation_loop(model, val_loader, criterion, model_settings)
         print(f'Epoch: {epoch+1:02} | Train Loss: {train_loss:.3f} | Val Loss: {val_loss:.3f}')
@@ -76,6 +90,34 @@ def train(data_settings, model_settings, train_settings, logger):
             ckpt = {'epoch': epoch, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
             torch.save(ckpt, f"{train_settings['checkpoint_folder']}/{model_settings['model_name']}_ckt.pth")
             min_loss = val_loss
+
+def check_initial_loss(model, data_loader, criterion, model_settings):
+    model.eval()
+    with torch.no_grad():
+        for src, trg in data_loader:
+            src, trg = src.to(device), trg.to(device)
+            print(f"Src: {src.shape}\n{src}\n\nTrg: {trg.shape}\n{trg}")
+            if model_settings['model_name']=='transformer':
+                trg_input = trg[:, :-1]  # Exclude the last token for target input
+                print(f"Trg Input: {trg_input.shape}\n{trg_input}")
+                output = model(src, trg_input)
+                print(f"Output: {output.shape}\n{output}")
+                output = output.permute(1,0,2)
+                output = output.reshape(-1, output.shape[-1])
+                trg = trg[:, 1:].reshape(-1)  # Shift target for loss computation
+            elif model_settings['model_name']=='custom_transformer':
+                trg_input = trg[:, :-1]  # Exclude the last token for target input
+                print(f"Trg Input: {trg_input.shape}\n{trg_input}")
+                output = model(src, trg_input)
+                print(f"Output: {output.shape}\n{output}")
+                output = output.reshape(-1, output.shape[-1])
+                trg = trg[:, 1:].reshape(-1)  # Shift target for loss computation
+            else:
+                break
+
+            loss = criterion(output, trg)
+            print(f"Initial loss: {loss.item()}")
+            break
 
 def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1):
         model.train()
@@ -96,17 +138,20 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1
                 output = output[1:].view(-1, output_dim)
                 trg = trg[1:].reshape(-1)
             elif model_settings['model_name'] == 'transformer':
-                trg = trg[:, :-1] #remove last token of trg
-                output = model(src, trg)
+                trg_input = trg[:, :-1] #remove last token of trg
+                output = model(src, trg_input)
                 # Reshape output to [batch_size, trg_len, vocab_size]
                 output = output.permute(1,0,2)
                 #print(f"Out BEF: {output.shape}\n{output}")
                 #print(f"Trg BEF: {trg.shape}\n{trg}")
                 #output_dim = output.shape[-1]
                 #output = output.reshape(-1, output_dim)
-                #trg = trg[1:].reshape(-1)
+                trg = trg[:, 1:].reshape(-1)
                 output = output.reshape(-1, output.shape[-1])
-                trg = trg.reshape(-1)
+                #trg = trg.reshape(-1)
+            elif model_settings['model_name'] == 'custom_transformer':
+                out = model(src, trg)
+                print(f"Custom Transf:\nOut: {out.shape}\n{out}")
             else:
                  raise ValueError("Model not valid!")
             
@@ -141,17 +186,17 @@ def validation_loop(model, val_loader, criterion, model_settings):
                     output = output.squeeze(1)[1:].view(-1, output_dim)
                     trg = trg[1:].reshape(-1)
                 elif model_settings['model_name'] == 'transformer':
-                    trg = trg[:, :-1] #remove last token of trg
-                    output = model(src, trg)
+                    trg_input = trg[:, :-1] #remove last token of trg
+                    output = model(src, trg_input)
                     # Reshape output to [batch_size, trg_len, vocab_size]
                     output = output.permute(1,0,2)
                     #print(f"Out BEF: {output.shape}\n{output}")
                     #print(f"Trg BEF: {trg.shape}\n{trg}")
                     #output_dim = output.shape[-1]
                     #output = output.reshape(-1, output_dim)
-                    #trg = trg[1:].reshape(-1)
+                    trg = trg[:, 1:].reshape(-1)
                     output = output.reshape(-1, output.shape[-1])
-                    trg = trg.reshape(-1)
+                    #trg = trg.reshape(-1)
                 else:
                     raise ValueError("Model not valid!")
 

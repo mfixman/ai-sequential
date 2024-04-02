@@ -309,9 +309,7 @@ class Transformer(nn.Module):
                  emb_size=256, num_layers=6, forward_expansion=4, heads=8, max_length=2500, dropout=0.1, device="cuda"):
         super(Transformer, self).__init__()
         self.src_word_embedding = nn.Embedding(vocab_size, emb_size, padding_idx=pad_idx)
-        self.src_position_embedding = nn.Embedding(max_length, emb_size)
         self.trg_word_embedding = nn.Embedding(vocab_size, emb_size, padding_idx=pad_idx)
-        self.trg_position_embedding = nn.Embedding(max_length, emb_size)
 
         self.emb_size = emb_size
         self.device = device
@@ -323,9 +321,21 @@ class Transformer(nn.Module):
         self.fc_out = nn.Linear(emb_size, vocab_size)
         self.pad_idx = pad_idx
 
-    def make_src_mask(self, src):
-        src_mask = (src == self.pad_idx)
-        return src_mask.to(self.device)
+    def generate_square_subsequent_mask(self, sz):
+        mask = (torch.triu(torch.ones((sz, sz), device=self.device)) == 1).transpose(0,1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask
+
+    def create_mask(self, src, tgt):
+        src_seq_len = src.shape[1]
+        tgt_seq_len = tgt.shape[1]
+
+        tgt_mask = self.generate_square_subsequent_mask(tgt_seq_len)
+        src_mask = torch.zeros((src_seq_len, src_seq_len),device=self.device).type(torch.bool) # No mask for the source
+
+        src_padding_mask = (src == self.pad_idx)
+        tgt_padding_mask = (tgt == self.pad_idx)
+        return src_mask, tgt_mask, src_padding_mask, tgt_padding_mask
 
     def forward(self, src, trg):
         N, src_seq_length = src.shape
@@ -336,28 +346,26 @@ class Transformer(nn.Module):
         embed_trg = self.trg_word_embedding(trg)
         # embed shape: [batch_size, seq_len, emd_dim]
 
-        #src_positions = (torch.arange(0, src_seq_length).unsqueeze(0).expand(N, src_seq_length).to(self.device))
-        #trg_positions = (torch.arange(0, trg_seq_length).unsqueeze(0).expand(N, trg_seq_length).to(self.device))
         trg_positions = get_positional_encoding(trg_seq_length, self.emb_size, self.device)
         src_positions = get_positional_encoding(src_seq_length, self.emb_size, self.device)
         # src_positions, trg_positions shape: [1, seq_len, emb_dim]
-
-        #embed_src = self.src_word_embedding(src) + self.src_position_embedding(src_positions)
-        #embed_trg = self.trg_word_embedding(trg) + self.trg_position_embedding(trg_positions)
 
         embed_src += src_positions
         embed_trg += trg_positions
         # embed_src, embed_trg shape: [batch_size, seq_len, emb_dim]
 
-        src_padding_mask = self.make_src_mask(src) # shape: [batch_size, src_len]
-        trg_mask = torch.triu(torch.ones((trg_seq_length, trg_seq_length), device=self.device), diagonal=1).bool()
-        # trg_mask shape: [trg_len, trg_len]
+        # Create masks
+        src_mask, trg_mask, src_padding_mask, trg_padding_mask = self.create_mask(src, trg)
+        # src_mask, trg_mask shape: [seq_len, seq_len]  ---  src_padding_mask, trg_padding_mask shape: [batch_size, seq_len]
+        #print(f"Src Mask: {src_mask.shape}\n{src_mask}\nSrc padding mask:{src_padding_mask.shape}\n{src_padding_mask}\n\nTrg mask: {trg_mask.shape}\n{trg_mask}\nTrg padding mask: {trg_padding_mask.shape}\n{trg_padding_mask}")
 
         # Reshape for nn.Transformer
         embed_src = embed_src.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
         embed_trg = embed_trg.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
 
-        out = self.transformer(embed_src, embed_trg, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask)
+        out = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
         out = self.fc_out(out)
+
+        #out = F.softmax(self.fc_out(out), dim=-1)
 
         return out
