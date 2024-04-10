@@ -50,7 +50,8 @@ class DatasetTokenizer:
     def initialize_punctuation(self, texts):
         """Initializes punctuation set."""
         words_raw = set.union(*[set(text) for text in texts])
-        self.punctuation = set(char for word in words_raw for char in word if not char.isalnum())
+        ignore = ['.']
+        self.punctuation = set(char for word in words_raw for char in word if not char.isalnum() and word not in ignore)
 
     def update_vocabulary(self, texts):
         """Updates the vocabulary set."""
@@ -151,7 +152,7 @@ class SubwordDatasetTokenizer(DatasetTokenizer):
 
 
 if __name__ == '__main__':
-    subword_tokenizer = SubwordDatasetTokenizer('tokenized_data_subword', model_name='bert-base-uncased')
+    subword_tokenizer = SubwordDatasetTokenizer('tokenized_data_subword_v2', model_name='bert-base-uncased')
     
     # Accessing special tokens and their attributes
     model_name = 'bert-base-uncased'

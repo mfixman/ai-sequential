@@ -1,6 +1,6 @@
 data_settings:
-    dataset_path: 'tokenized_data_subword'
-    vocabulary_path: 'tokenized_data_subword/vocabulary.pickle'
+    dataset_path: 'tokenized_data_subword_v2'
+    vocabulary_path: 'tokenized_data_subword_v2/vocabulary.pickle'
     special_tokens: ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']
 seq2seq_params:
     model_name: 'transformer'

@@ -5,6 +5,7 @@ transformer.py
 # Tokenized dataset
 tokenized_data/
 tokenized_data_subword/
+tokenized_data_subword_v2/
 
 # Hyperion
 run_job.sh

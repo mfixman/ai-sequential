@@ -246,11 +246,14 @@ class AttSeq2Seq(nn.Module):
         cell = torch.cat((cell, cell, cell), dim=0)
 
         input = trg[:, 0] # First input to the decoder is the <sos> tokens
+        out_seq[:, 0] = input
+
+        print(f"Input: {input.shape}\n{input}")
 
         for t in range(1, trg_len):
             output, hidden, cell, att_weights = self.decoder(input, hidden, cell, encoder_outputs)
-            #print(f"\nDecoder output shape: {output.shape}")
-            #print(f"Decoder output: {output}\n")
+            # output shape: [batch_size, trg_len, voc_dim]
+            print(f"\nDecoder output: {output.shape}\n{output}")
             outputs[:, t, :] = output.squeeze(1)
             attentions[:, t, :] = att_weights.squeeze(1)
 
@@ -261,12 +264,18 @@ class AttSeq2Seq(nn.Module):
 
             # Top-k sampling
             probs = torch.softmax(output, dim=-1)
+            print(f"Probs: {probs.shape}\n{probs}")
             k = 10
             top_k_probs, top_k_indices = torch.topk(probs, k, dim=-1)
-            out_seq = torch.multinomial(top_k_probs.view(-1, k), 1).view(-1, output.shape[1]) # Sampling from the top k probabilities to get the indices
-            out_seq = torch.gather(top_k_indices, 2, out_seq.unsqueeze(-1)).squeeze(-1) # Map back the indices to vocabulary index
+            print(f"Probs: {top_k_probs.shape}\n{top_k_probs}")
+            print(f"Probs idx: {top_k_indices.shape}\n{top_k_indices}")
+            out = torch.multinomial(top_k_probs.view(-1, k), 1).view(-1, output.shape[1]) # Sampling from the top k probabilities to get the indices
+            out = torch.gather(top_k_indices, 2, out.unsqueeze(-1)).squeeze(-1) # Map back the indices to vocabulary index
+            print(f"out: {out.shape}\n{out}")
+            out_seq[:,t] = out
+            print(f"out seq: {out_seq.shape}\n{out_seq}")
 
-            input = (trg[:, t] if teacher_force else out_seq.squeeze(-1)).detach()
+            input = (trg[:, t] if teacher_force else out.squeeze(0)).detach()
             
             self.teacher_forcing_ratio -= (0.5 / 1000)  # Decrease by 0.0005 each step
             self.teacher_forcing_ratio = max(self.teacher_forcing_ratio, 0)  # Ensure it doesn't go below 0
@@ -365,7 +374,5 @@ class Transformer(nn.Module):
 
         out = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
         out = self.fc_out(out)
-
-        #out = F.softmax(self.fc_out(out), dim=-1)
 
         return out

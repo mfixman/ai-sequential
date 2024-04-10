@@ -16,8 +16,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(data_settings, model_settings, train_settings, logger):
     # Dataset
-    train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='validation', vocabulary_file=data_settings['vocabulary_path'])
-    val_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='test', vocabulary_file=data_settings['vocabulary_path'])
+    train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='train', vocabulary_file=data_settings['vocabulary_path'])
+    val_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='validation', vocabulary_file=data_settings['vocabulary_path'])
     train_loader = DataLoader(train_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
     val_loader = DataLoader(val_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
 
@@ -73,7 +73,7 @@ def train(data_settings, model_settings, train_settings, logger):
         print("Model's pretrained weights loaded!")
 
     # Loss
-    criterion = nn.CrossEntropyLoss(ignore_index=train_dataset.vocabulary[data_settings['special_tokens'][0]])
+    criterion = nn.CrossEntropyLoss(reduction='sum', ignore_index=train_dataset.vocabulary[data_settings['special_tokens'][0]])
 
     # Train loop
     min_loss = float('inf')

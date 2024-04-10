@@ -17,6 +17,7 @@ def infer(data_settings, model_settings, inference_settings):
     # Model
     INPUT_DIM = len(test_dataset.vocabulary)
     OUTPUT_DIM = len(test_dataset.vocabulary)
+    print(f"\nVocabulary size: {INPUT_DIM}\n")
     PAD_IDX = test_dataset.vocabulary[data_settings['special_tokens'][0]]
     if model_settings['model_name'] == 'seq2seq':
         encoder = EncoderLSTM(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
@@ -58,30 +59,33 @@ def infer(data_settings, model_settings, inference_settings):
 
             if model_settings['model_name'] == 'seq2seq':
                 output, out_seq, attentions = model(src, trg)
-                print(f"Out_seq: {out_seq.shape}\nOut_seq")
+                #print(f"Out_seq: {out_seq.shape}\nOut_seq")
             elif model_settings['model_name'] == 'transformer':
                 trg_input = trg[:, :-1] #remove last token of trg
-                output = model(src, trg_input) # output shape: [trg_len, batch_size, vocab_size]
+                #print("Top K sampling...")
+                #print(f"Target Input: {trg_input[0][0:2].unsqueeze(0).shape}\n{trg_input[0][0:2]}")
+                #output = model(src, trg_input[0][0:2].unsqueeze(0)) # output shape: [trg_len, batch_size, vocab_size]
+                output = model(src, trg_input)
+                #print(f"output: {output.shape}\n{output}")
                 probs = torch.softmax(output, dim=-1) # caluclate probs from logits
-                k = 10
+                #print(f"Probs: {probs.shape}\n{probs}")
+                k = 5
                 top_k_probs, top_k_indices = torch.topk(probs, k, dim=-1) # get the k most probable tokens with the probs and the indices!
-                print(f"topk probs: {top_k_probs}\ntop_k_indices: {top_k_indices}")
+                #print(f"topk probs: {top_k_probs}\ntop_k_indices: {top_k_indices}")
                 out_seq = torch.multinomial(top_k_probs.view(-1, k), 1) # Sampling from the top k probabilities to get the indices
                 out_seq_indices = torch.gather(top_k_indices, 2, out_seq.unsqueeze(-1)) #gather back the vocabulary indices from top_k_indices
                 out_seq = out_seq_indices.squeeze(-1).permute(1, 0) # reshape to [batch_size, trg_len]
             else:
                 raise ValueError('Model not valid!')
 
-
-            print(f"Source_shape: {src.shape}\n  Source: {src[0]}")
-            print(f"Target_shape: {trg.shape}\n  Target: {trg[0]}")
-            print(f"Output Shape: {out_seq.shape}\n Output: {out_seq[0]}\n")
+            #print(f"Source_shape: {src.shape}\n  Source: {src[0]}")
+            #print(f"Target_shape: {trg.shape}\n  Target: {trg[0]}")
+            #print(f"Output Shape: {out_seq.shape}\n Output: {out_seq[0]}\n")
 
             news_text = subword_tokenizer.tokenizer.decode(src[0].cpu().numpy(), skip_special_tokens=True)
             target_text = subword_tokenizer.tokenizer.decode(trg[0].cpu().numpy(), skip_special_tokens=True)
-
             generated_text = subword_tokenizer.tokenizer.decode(out_seq[0].cpu().numpy(), skip_special_tokens=False)
-            
+
             print(f"News Text: {news_text}\n")
             print(f'Target Text: {target_text}\n')
             print(f'Generated Text: {generated_text}\n')
