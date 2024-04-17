@@ -1,18 +1,22 @@
 import torch
 from torch.utils.data import DataLoader
-from utils import load_config, collate_fn, plot_attention
+from utils import load_config, collate_fn, collate_fn_v2
 from models import EncoderLSTM, DecoderLSTM, Seq2Seq, AttDecoderLSTM, AttSeq2Seq, Transformer
 from dataset import NewsDataset
 from dataset_tokenizer import SubwordDatasetTokenizer
 
-torch.manual_seed(42)
+torch.manual_seed(0)
 #os.environ['https_proxy'] = "http://hpc-proxy00.city.ac.uk:3128" # Proxy to train with hyperion
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def infer(data_settings, model_settings, inference_settings):
     # Dataset
-    test_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='test', vocabulary_file=data_settings['vocabulary_path'])
-    test_loader = DataLoader(test_dataset, batch_size=inference_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
+    test_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='train', vocabulary_file=data_settings['vocabulary_path'], version=model_settings['version'])
+    if model_settings['version'] == '1':
+        test_loader = DataLoader(test_dataset, batch_size=inference_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
+    elif model_settings['version'] == '2':
+        # Change collate function to v2
+        test_loader = DataLoader(test_dataset, batch_size=inference_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn_v2)
 
     # Model
     INPUT_DIM = len(test_dataset.vocabulary)
@@ -41,7 +45,7 @@ def infer(data_settings, model_settings, inference_settings):
 
     # Loading checkpoint
     if inference_settings['load_checkpoint']:
-        ckpt = torch.load(f"{inference_settings['checkpoint_folder']}/{model_settings['model_name']}_ckt.pth", map_location=device)
+        ckpt = torch.load(f"{inference_settings['checkpoint_folder']}/{model_settings['model_name']}_v1_ckt.pth", map_location=device)
         model_weights = ckpt['model_weights']
         model.load_state_dict(model_weights)
         print(f"{model_settings['model_name']}'s pretrained weights loaded!\n")

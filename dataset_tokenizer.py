@@ -5,6 +5,8 @@ from nltk import tokenize
 from nltk.corpus import stopwords
 from nltk.util import ngrams
 from transformers import AutoTokenizer
+from collections import Counter
+import math
 
 class DatasetTokenizer:
     def __init__(self, saving_path='', ngram_size=1):
@@ -117,6 +119,38 @@ class SubwordDatasetTokenizer(DatasetTokenizer):
         self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+    def compute_tf(self, texts):
+        """
+        Computes term frequencies for tokenized texts.
+
+        :param texts: A list of texts.
+
+        Return: list of Counter (dictionary {word:value})
+        """
+        tf_values = [Counter(text) for text in texts]
+        return tf_values
+    
+    def compute_idf(self, texts):
+        """
+        Computes Inverse Document Frequency (IDF) values for the dataset.
+
+        :param texts: A list of lists, each sublist containing tokenized text of a document.
+
+        Return: dictionary {word: value}
+        """
+        # Compute Document Frequencies (DF)
+        df = Counter()
+        for text in texts:
+            # Use a set to ensure each term is only counted once per document
+            unique_terms = set(text)
+            for term in unique_terms:
+                df[term] += 1
+        # Total number of documents
+        N = len(texts)
+        # Compute IDF values
+        idf = {term: math.log(N / (df_value + 1)) + 1 for term, df_value in df.items()}  # Adding 1 for smoothing
+        return idf
+
     def tokenize_text(self, texts):
         """
         Tokenizes a list of texts using the pre-trained WordPiece tokenizer.
@@ -136,8 +170,18 @@ class SubwordDatasetTokenizer(DatasetTokenizer):
             cleaned_texts = self.clean_text(tokenized_texts)
             cleaned_summaries = self.clean_text(tokenized_summaries)
 
+            tf_text = self.compute_tf(cleaned_texts)
+            tf_summaries = self.compute_tf(cleaned_summaries)
+            idf_text = self.compute_idf(cleaned_texts)
+            idf_summaries = self.compute_idf(cleaned_summaries)
+
             self.save_data(f'{split}_text', cleaned_texts)
             self.save_data(f'{split}_high', cleaned_summaries)
+            self.save_data(f'{split}_tf_text', tf_text)
+            self.save_data(f'{split}_tf_high', tf_summaries)
+            self.save_data(f'{split}_idf_text', idf_text)
+            self.save_data(f'{split}_idf_high', idf_summaries)
+
     
     def tokenize_dataset(self):
         """Orchestrates the dataset tokenization process."""

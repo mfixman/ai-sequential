@@ -359,8 +359,89 @@ class Transformer(nn.Module):
         src_positions = get_positional_encoding(src_seq_length, self.emb_size, self.device)
         # src_positions, trg_positions shape: [1, seq_len, emb_dim]
 
+        # Add positional encoding
         embed_src += src_positions
         embed_trg += trg_positions
+        # embed_src, embed_trg shape: [batch_size, seq_len, emb_dim]
+
+        # Create masks
+        src_mask, trg_mask, src_padding_mask, trg_padding_mask = self.create_mask(src, trg)
+        # src_mask, trg_mask shape: [seq_len, seq_len]  ---  src_padding_mask, trg_padding_mask shape: [batch_size, seq_len]
+        #print(f"Src Mask: {src_mask.shape}\n{src_mask}\nSrc padding mask:{src_padding_mask.shape}\n{src_padding_mask}\n\nTrg mask: {trg_mask.shape}\n{trg_mask}\nTrg padding mask: {trg_padding_mask.shape}\n{trg_padding_mask}")
+
+        # Reshape for nn.Transformer
+        embed_src = embed_src.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
+        embed_trg = embed_trg.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
+
+        out = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
+        out = self.fc_out(out)
+
+        return out
+    
+class TransformerV2(nn.Module):
+    def __init__(self, vocab_size, pad_idx, 
+                 emb_size=256, num_layers=6, forward_expansion=4, heads=8, max_length=2500, dropout=0.1, device="cuda"):
+        super(TransformerV2, self).__init__()
+        self.src_word_embedding = nn.Embedding(vocab_size, emb_size, padding_idx=pad_idx)
+        self.trg_word_embedding = nn.Embedding(vocab_size, emb_size, padding_idx=pad_idx)
+        
+        self.tf_embedding = nn.Embedding(vocab_size, emb_size, padding_idx=pad_idx)
+        self.idf_embedding = nn.Embedding(vocab_size, emb_size, padding_idx=pad_idx)
+
+        self.emb_size = emb_size
+        self.device = device
+        self.transformer = nn.Transformer(d_model=emb_size, nhead=heads, 
+                                          num_encoder_layers=num_layers,
+                                          num_decoder_layers=num_layers,
+                                          dim_feedforward=emb_size*forward_expansion,
+                                          dropout=dropout)
+        self.fc_out = nn.Linear(emb_size, vocab_size)
+        self.pad_idx = pad_idx
+
+    def generate_square_subsequent_mask(self, sz):
+        mask = (torch.triu(torch.ones((sz, sz), device=self.device)) == 1).transpose(0,1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask
+
+    def create_mask(self, src, tgt):
+        src_seq_len = src.shape[1]
+        tgt_seq_len = tgt.shape[1]
+
+        tgt_mask = self.generate_square_subsequent_mask(tgt_seq_len)
+        src_mask = torch.zeros((src_seq_len, src_seq_len),device=self.device).type(torch.bool) # No mask for the source
+
+        src_padding_mask = (src == self.pad_idx)
+        tgt_padding_mask = (tgt == self.pad_idx)
+        return src_mask, tgt_mask, src_padding_mask, tgt_padding_mask
+
+    def forward(self, src, trg, tf_src, tf_trg, idf_src, idf_trg):
+        N, src_seq_length = src.shape
+        N, trg_seq_length = trg.shape
+        # input shape: [batch_size, seq_len]
+
+        embed_src = self.src_word_embedding(src)
+        embed_trg = self.trg_word_embedding(trg)
+        # embed shape: [batch_size, seq_len, emd_dim]
+
+        # Embed tf and idf metrics
+        embed_tf_src = self.tf_embedding(tf_src)
+        embed_tf_trg = self.tf_embedding(tf_trg)
+        embed_idf_src = self.idf_embedding(idf_src)
+        embed_idf_trg = self.idf_embedding(idf_trg)
+
+        trg_positions = get_positional_encoding(trg_seq_length, self.emb_size, self.device)
+        src_positions = get_positional_encoding(src_seq_length, self.emb_size, self.device)
+        # src_positions, trg_positions shape: [1, seq_len, emb_dim]
+
+        # Add positional encoding
+        embed_src += src_positions
+        embed_trg += trg_positions
+        # Add tf metrics
+        embed_src += embed_tf_src
+        embed_trg += embed_tf_trg
+        # Add idf metrics
+        embed_src += embed_idf_src
+        embed_trg += embed_idf_trg
         # embed_src, embed_trg shape: [batch_size, seq_len, emb_dim]
 
         # Create masks

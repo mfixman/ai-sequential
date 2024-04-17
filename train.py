@@ -16,7 +16,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(data_settings, model_settings, train_settings, logger):
     # Dataset
-    train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='train', vocabulary_file=data_settings['vocabulary_path'])
+    train_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='validation', vocabulary_file=data_settings['vocabulary_path'])
     val_dataset = NewsDataset(data_dir=data_settings['dataset_path'], special_tokens=data_settings['special_tokens'], split_type='validation', vocabulary_file=data_settings['vocabulary_path'])
     train_loader = DataLoader(train_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
     val_loader = DataLoader(val_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn)
@@ -32,6 +32,7 @@ def train(data_settings, model_settings, train_settings, logger):
         decoder = AttDecoderLSTM(OUTPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
         model = AttSeq2Seq(encoder, decoder, device).to(device)
     elif model_settings['model_name'] == 'transformer':
+        print("Using Transformer\n")
         PAD_IDX = train_dataset.vocabulary[data_settings['special_tokens'][0]]
         model = Transformer(
             vocab_size=OUTPUT_DIM, 
@@ -73,7 +74,7 @@ def train(data_settings, model_settings, train_settings, logger):
         print("Model's pretrained weights loaded!")
 
     # Loss
-    criterion = nn.CrossEntropyLoss(reduction='sum', ignore_index=train_dataset.vocabulary[data_settings['special_tokens'][0]])
+    criterion = nn.CrossEntropyLoss(ignore_index=train_dataset.vocabulary[data_settings['special_tokens'][0]])
 
     # Train loop
     min_loss = float('inf')
@@ -82,7 +83,7 @@ def train(data_settings, model_settings, train_settings, logger):
         train_loss = train_loop(model, train_loader, criterion, optimizer, model_settings)
         val_loss = validation_loop(model, val_loader, criterion, model_settings)
         print(f'Epoch: {epoch+1:02} | Train Loss: {train_loss:.3f} | Val Loss: {val_loss:.3f}')
-        logger.log({'train_loss': train_loss, 'validation_loss': val_loss})
+        if logger: logger.log({'train_loss': train_loss, 'validation_loss': val_loss})
 
         # Save checkpoint if improvement
         if val_loss < min_loss:
@@ -94,13 +95,16 @@ def train(data_settings, model_settings, train_settings, logger):
 def check_initial_loss(model, data_loader, criterion, model_settings):
     model.eval()
     with torch.no_grad():
-        for src, trg in data_loader:
+        for src, trg, tf_src, tf_trg, idf_src, idf_trg in data_loader:
             src, trg = src.to(device), trg.to(device)
+            tf_src, tf_trg, idf_src, idf_trg = tf_src.to(device), tf_trg.to(device), idf_src.to(device), idf_trg.to(device)
             print(f"Src: {src.shape}\n{src}\n\nTrg: {trg.shape}\n{trg}")
             if model_settings['model_name']=='transformer':
                 trg_input = trg[:, :-1]  # Exclude the last token for target input
+                tf_trg_input = tf_trg[:, :-1]
+                idf_trg_input = idf_trg[:, :-1]
                 print(f"Trg Input: {trg_input.shape}\n{trg_input}")
-                output = model(src, trg_input)
+                output = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
                 print(f"Output: {output.shape}\n{output}")
                 output = output.permute(1,0,2)
                 output = output.reshape(-1, output.shape[-1])
@@ -122,9 +126,9 @@ def check_initial_loss(model, data_loader, criterion, model_settings):
 def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1):
         model.train()
         epoch_loss = 0
-        for i, (src, trg) in enumerate(train_loader):
+        for i, (src, trg, tf_src, tf_trg, idf_src, idf_trg) in enumerate(train_loader):
             src, trg = src.to(device), trg.to(device)
-
+            tf_src, tf_trg, idf_src, idf_trg = tf_src.to(device), tf_trg.to(device), idf_src.to(device), idf_trg.to(device)
             #print(f"Src shape: {src.shape}\nSrc: {src}")
             #print(f"Src shape: {src.shape}\nSrc: {src}")
 
@@ -139,7 +143,9 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1
                 trg = trg[1:].reshape(-1)
             elif model_settings['model_name'] == 'transformer':
                 trg_input = trg[:, :-1] #remove last token of trg
-                output = model(src, trg_input)
+                tf_trg_input = tf_trg[:, :-1]
+                idf_trg_input = idf_trg[:, :-1]
+                output = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
                 # Reshape output to [batch_size, trg_len, vocab_size]
                 output = output.permute(1,0,2)
                 #print(f"Out BEF: {output.shape}\n{output}")
@@ -175,8 +181,9 @@ def validation_loop(model, val_loader, criterion, model_settings):
         model.eval()
         epoch_loss = 0
         with torch.no_grad():
-            for i, (src, trg) in enumerate(val_loader):
+            for i, (src, trg, tf_src, tf_trg, idf_src, idf_trg) in enumerate(val_loader):
                 src, trg = src.to(device), trg.to(device)
+                tf_src, tf_trg, idf_src, idf_trg = tf_src.to(device), tf_trg.to(device), idf_src.to(device), idf_trg.to(device)
 
                 if model_settings['model_name'] == 'seq2seq':
                     output, out_seq, attentions = model(src, trg)
@@ -187,7 +194,9 @@ def validation_loop(model, val_loader, criterion, model_settings):
                     trg = trg[1:].reshape(-1)
                 elif model_settings['model_name'] == 'transformer':
                     trg_input = trg[:, :-1] #remove last token of trg
-                    output = model(src, trg_input)
+                    tf_trg_input = tf_trg[:, :-1]
+                    idf_trg_input = idf_trg[:, :-1]
+                    output = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
                     # Reshape output to [batch_size, trg_len, vocab_size]
                     output = output.permute(1,0,2)
                     #print(f"Out BEF: {output.shape}\n{output}")
@@ -216,10 +225,13 @@ def main():
     model_setting = config['seq2seq_params']
     train_setting = config['train']
 
-    wandb_logger = Logger(
-        f"{model_setting['model_name']}_lr={train_setting['learning_rate']}_L1",
-        project='NewSum')
-    logger = wandb_logger.get_logger()
+    if train_setting['log']:
+        wandb_logger = Logger(
+            f"{model_setting['model_name']}_lr={train_setting['learning_rate']}_L1",
+            project='NewSum')
+        logger = wandb_logger.get_logger()
+    else:
+        logger = None
 
     print("\n############## MODEL SETTINGS ##############")
     print(model_setting)
