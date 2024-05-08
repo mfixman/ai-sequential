@@ -72,10 +72,22 @@ class CrossSimilarityLoss():
         embedded_pred = embedded_pred.permute(1, 0, 2)
         embedded_target = embedded_target.permute(1, 0, 2)
 
+        # Create a mask for padding tokens
+        mask = (target_tokens.view(embedded_pred.shape[0], embedded_pred.shape[1]) != self.pad_idx).unsqueeze(-1)  # Shape [batch_size, seq_len, 1]
+        # Expand the mask to the embedding dimension
+        mask = mask.expand(-1, -1, embedded_pred.size(-1))  # Expand to [batch_size, seq_len, emb_dim]
+
+        # Apply mask to embeddings
+        masked_pred = embedded_pred * mask
+        masked_target = embedded_target * mask
+
         # Semantic similarity loss calculation
-        cosine_sim = F.cosine_similarity(embedded_pred, embedded_target, dim=2)
-        semantic_loss = 1 - cosine_sim.mean()  # Average over batch
+        cosine_sims = F.cosine_similarity(masked_pred, masked_target, dim=2)
+        #semantic_loss = 1 - cosine_sim.mean()  # Average over sequence and batch
+        # Calculate the mean only over non-padding elements
+        valid_tokens = mask.float().sum(dim=[1, 2]) / embedded_pred.size(2)  # Normalize by emb_dim to count tokens, not elements
+        semantic_loss = 1 - (cosine_sims.sum(dim=1) / valid_tokens).mean()  # Normalize by number of valid tokens and average over sequence and batch
 
         loss = self.weight_ce * ce_loss + self.weight_semantic * semantic_loss # Weighted sum of the cross-entropy and semantic similarity losses
-
+        
         return loss
