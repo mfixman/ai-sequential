@@ -124,7 +124,7 @@ def main():
     config = load_config()
 
     data_setting = config['data_settings']
-    model_setting = config['seq2seq_params']
+    model_setting = config['model_params']
     inference_setting = config['infer']
 
     print("\n############## MODEL SETTINGS ##############")

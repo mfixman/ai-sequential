@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from utils import load_config, collate_fn, collate_fn_v2
+from utils import load_config, collate_fn, collate_fn_v2, CrossSimilarityLoss
 from models import EncoderLSTM, DecoderLSTM, Seq2Seq, AttDecoderLSTM, AttSeq2Seq, Transformer, TransformerV2
 from dataset import NewsDataset
 from logger import Logger
@@ -79,7 +79,11 @@ def train(data_settings, model_settings, train_settings, logger):
         print("Model's pretrained weights loaded!")
 
     # Loss
-    criterion = nn.CrossEntropyLoss(ignore_index=train_dataset.vocabulary[data_settings['special_tokens'][0]])
+    criterion = CrossSimilarityLoss(
+                    weight_semantic=0.2,
+                    weight_ce=0.8,
+                    pad_idx=train_dataset.vocabulary[data_settings['special_tokens'][0]],
+                    criterion=train_settings['loss'])
 
     # Train loop
     min_loss = float('inf')
@@ -99,6 +103,8 @@ def train(data_settings, model_settings, train_settings, logger):
 def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1):
         model.train()
         epoch_loss = 0
+        dec_out = None # Placeholder
+        emb_trg = None # Placeholder
 
         if model_settings['version'] == '1':
             for i, (src, trg) in enumerate(train_loader):
@@ -113,10 +119,10 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1
                     trg_input = trg[:, :-1] #remove last token of trg
                     output; dec_out, emd_trg = model(src, trg_input) 
                     output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-                    trg = trg[:, 1:].reshape(-1)
-                    output = output.reshape(-1, output.shape[-1])
-
-                loss = criterion(output, trg)
+                    trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
+                    output = output.reshape(-1, output.shape[-1])  # Reshape to [batch_size*trg_len, vocab_size]
+                
+                loss = criterion(output, trg, dec_out, emb_trg)
                 l1_lambda = 0.00001
                 l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
                 loss += l1_lambda*l1_norm
@@ -135,12 +141,12 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1
                     idf_trg_input = idf_trg[:, :-1]
                     output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
                     output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-                    trg = trg[:, 1:].reshape(-1)
-                    output = output.reshape(-1, output.shape[-1])
+                    trg = trg[:, 1:].reshape(-1) # Remove first token and reshape to [batch_size*trg_len]
+                    output = output.reshape(-1, output.shape[-1]) # Reshape to [batch_size*trg_len, vocab_size]
                 else:
                     raise ValueError("Model not valid! Only 'transformer' is supported for version '2'.")
                 
-                loss = criterion(output, trg)
+                loss = criterion.get_loss(output, trg, dec_out, emb_trg)
                 l1_lambda = 0.00001
                 l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
                 loss += l1_lambda*l1_norm
@@ -155,6 +161,8 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1
 def validation_loop(model, val_loader, criterion, model_settings):
         model.eval()
         epoch_loss = 0
+        dec_out = None # Placeholder
+        emb_trg = None # Placeholder
         with torch.no_grad():
             if model_settings['version'] == '1':
                 for i, (src, trg) in enumerate(val_loader):
@@ -171,7 +179,7 @@ def validation_loop(model, val_loader, criterion, model_settings):
                         trg = trg[:, 1:].reshape(-1)
                         output = output.reshape(-1, output.shape[-1])
 
-                    loss = criterion(output, trg)
+                    loss = criterion.get_loss(output, trg, dec_out, emb_trg)
                     l1_lambda = 0.00001
                     l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
                     loss += l1_lambda*l1_norm
@@ -193,7 +201,7 @@ def validation_loop(model, val_loader, criterion, model_settings):
                     else:
                         raise ValueError("Model not valid! Only 'transformer' is supported for version '2'.")
 
-                    loss = criterion(output, trg)
+                    loss = criterion.get_loss(output, trg, dec_out, emb_trg)
                     l1_lambda = 0.00001
                     l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
                     loss += l1_lambda*l1_norm
@@ -206,7 +214,7 @@ def main():
     config = load_config()
 
     data_setting = config['data_settings']
-    model_setting = config['seq2seq_params']
+    model_setting = config['model_params']
     train_setting = config['train']
 
     if train_setting['log']:

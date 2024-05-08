@@ -2,7 +2,7 @@ data_settings:
     dataset_path: 'tokenized_data_subword_v2'
     vocabulary_path: 'tokenized_data_subword_v2/vocabulary.pickle'
     special_tokens: ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']
-seq2seq_params:
+model_params:
     model_name: 'transformer'
     version: '2'
     encoder_embedding_dim: 512
@@ -14,6 +14,7 @@ train:
     epochs: 30
     batch_size: 8
     learning_rate: 0.00001
+    loss: 'CrossSimilarity' # 'CrossEntropy' or 'CrossSimilarity' | note: 'CrossSimilarity' works only for transformer
     checkpoint_folder: 'checkpoints'
     load_checkpoint : False
     log: False
