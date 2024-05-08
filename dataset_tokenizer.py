@@ -23,6 +23,11 @@ class DatasetTokenizer:
         self.special_tokens = ["<pad>", "<sos>", "<eos>", "<unk>"]
         self.vocabulary = set()
 
+        try:
+            os.mkdir(self.saving_path)
+        except FileExistsError:
+            pass
+
     def load_dataset(self):
         """Loads the dataset."""
         return datasets.load_dataset('cnn_dailymail', '3.0.0')
