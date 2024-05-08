@@ -1,18 +1,18 @@
 data_settings:
-    dataset_path: 'tokenized_data_subword'
-    vocabulary_path: 'tokenized_data_subword/vocabulary.pickle'
+    dataset_path: 'tokenized_data_subword_v2'
+    vocabulary_path: 'tokenized_data_subword_v2/vocabulary.pickle'
     special_tokens: ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']
 seq2seq_params:
     model_name: 'transformer'
-    version: '1'
+    version: '2'
     encoder_embedding_dim: 512
     decoder_embedding_dim: 512
     hidden_dim: 512
     num_layers: 6
-    dropout: 0.3
+    dropout: 0.2
 train:
-    epochs: 10
-    batch_size: 2
+    epochs: 30
+    batch_size: 8
     learning_rate: 0.00001
     checkpoint_folder: 'checkpoints'
     load_checkpoint : False
