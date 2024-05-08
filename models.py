@@ -85,7 +85,6 @@ class DecoderLSTM(nn.Module):
         #return prediction, hidden, cell
         return prediction, hidden, cell  # Return the last layer states
     
-
 class Seq2Seq(nn.Module):
     def __init__(self, encoder, decoder, device, max_output_lenght=30):
         super().__init__()
@@ -373,10 +372,13 @@ class Transformer(nn.Module):
         embed_src = embed_src.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
         embed_trg = embed_trg.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
 
-        out = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
-        out = self.fc_out(out)
+        decoder_out = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
+        # decoder_out shape: [seq_len, batch_size, emb_dim]
 
-        return out
+        out = self.fc_out(decoder_out)
+        # out shape [seq_len, batch_size, vocab_size]
+        
+        return out, decoder_out, embed_trg
     
 class TransformerV2(nn.Module):
     def __init__(self, vocab_size, pad_idx, 
@@ -453,7 +455,10 @@ class TransformerV2(nn.Module):
         embed_src = embed_src.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
         embed_trg = embed_trg.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
 
-        out = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
-        out = self.fc_out(out)
+        decoder_out = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
+        # decoder_out shape: [seq_len, batch_size, emb_dim]
 
-        return out
+        out = self.fc_out(decoder_out)
+        # out shape [seq_len, batch_size, vocab_size]
+
+        return out, decoder_out, embed_trg

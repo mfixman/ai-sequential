@@ -60,9 +60,9 @@ def train(data_settings, model_settings, train_settings, logger):
                 device=device
             ).to(device)
         else:
-            raise ValueError("Verion not supported!")
+            raise ValueError("Version not supported!")
     else:
-        raise ValueError("Selected model not available. Please choose between 'seq2seq' and 'transformer")
+        raise ValueError("Selected model not available. Please choose between 'seq2seq' and 'transformer'")
     
     # Optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=train_settings['learning_rate'], betas=(0.9, 0.98), eps=1e-9)
@@ -111,7 +111,7 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1
                     trg = trg[1:].reshape(-1)
                 elif model_settings['model_name'] == 'transformer':
                     trg_input = trg[:, :-1] #remove last token of trg
-                    output = model(src, trg_input) 
+                    output; dec_out, emd_trg = model(src, trg_input) 
                     output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
                     trg = trg[:, 1:].reshape(-1)
                     output = output.reshape(-1, output.shape[-1])
@@ -133,7 +133,7 @@ def train_loop(model, train_loader, criterion, optimizer, model_settings, clip=1
                     trg_input = trg[:, :-1] #remove last token of trg
                     tf_trg_input = tf_trg[:, :-1]
                     idf_trg_input = idf_trg[:, :-1]
-                    output = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
+                    output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
                     output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
                     trg = trg[:, 1:].reshape(-1)
                     output = output.reshape(-1, output.shape[-1])
@@ -166,7 +166,7 @@ def validation_loop(model, val_loader, criterion, model_settings):
                         trg = trg[1:].reshape(-1)
                     elif model_settings['model_name'] == 'transformer':
                         trg_input = trg[:, :-1] #remove last token of trg
-                        output = model(src, trg_input) 
+                        output, dec_out, emb_trg = model(src, trg_input) 
                         output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
                         trg = trg[:, 1:].reshape(-1)
                         output = output.reshape(-1, output.shape[-1])
@@ -186,7 +186,7 @@ def validation_loop(model, val_loader, criterion, model_settings):
                         trg_input = trg[:, :-1] #remove last token of trg
                         tf_trg_input = tf_trg[:, :-1]
                         idf_trg_input = idf_trg[:, :-1]
-                        output = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
+                        output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
                         output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
                         trg = trg[:, 1:].reshape(-1)
                         output = output.reshape(-1, output.shape[-1])

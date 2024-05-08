@@ -79,7 +79,7 @@ def infer(data_settings, model_settings, inference_settings):
                     output, out_seq, attentions = model(src, trg)
                 elif model_settings['model_name'] == 'transformer':
                     trg_input = trg[:, :-1] #remove last token of trg
-                    output = model(src, trg_input)
+                    output, dec_out, emd_trg = model(src, trg_input)
                     probs = torch.softmax(output, dim=-1) # caluclate probs from logits
                     k = 5
                     top_k_probs, top_k_indices = torch.topk(probs, k, dim=-1) # get the k most probable tokens with the probs and the indices!
@@ -97,7 +97,7 @@ def infer(data_settings, model_settings, inference_settings):
                     trg_input = trg[:, :-1] #remove last token of trg
                     tf_trg_input = tf_trg[:, :-1]
                     idf_trg_input = idf_trg[:, :-1]
-                    output = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
+                    output, dec_out, emd_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
                     probs = torch.softmax(output, dim=-1) # caluclate probs from logits
                     k = 5
                     top_k_probs, top_k_indices = torch.topk(probs, k, dim=-1) # get the k most probable tokens with the probs and the indices!
