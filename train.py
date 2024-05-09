@@ -8,6 +8,8 @@ from dataset import NewsDataset
 from logger import Logger
 import os
 
+from scores import Rouge
+
 torch.manual_seed(42)
 os.environ['https_proxy'] = "http://hpc-proxy00.city.ac.uk:3128" # Proxy to train with hyperion
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -23,6 +25,8 @@ def train(data_settings, model_settings, train_settings, logger):
         # Change collate function to v2
         train_loader = DataLoader(train_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn_v2)
         val_loader = DataLoader(val_dataset, batch_size=train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=collate_fn_v2)
+
+    scorer = Rouge('rouge2')
 
     # Model
     INPUT_DIM = len(train_dataset.vocabulary)
@@ -90,6 +94,8 @@ def train(data_settings, model_settings, train_settings, logger):
     for epoch in range(epoch_start, train_settings['epochs']):
         train_loss = train_loop(model, train_loader, criterion, optimizer, model_settings)
         val_loss = validation_loop(model, val_loader, criterion, model_settings)
+        scores = scorer.get_avg_score(model, val_loader)
+
         print(f'Epoch: {epoch+1:02} | Train Loss: {train_loss:.3f} | Val Loss: {val_loss:.3f}')
         if logger: logger.log({'train_loss': train_loss, 'validation_loss': val_loss})
 
