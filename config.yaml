@@ -17,7 +17,8 @@ train:
     loss: 'CrossSimilarity' # 'CrossEntropy' or 'CrossSimilarity' | note: 'CrossSimilarity' works only for transformer
     checkpoint_folder: 'checkpoints'
     load_checkpoint : False
-    log: False
+    log: True
+    max_samples: 10
 infer:
     batch_size: 1
     checkpoint_folder: 'checkpoints'

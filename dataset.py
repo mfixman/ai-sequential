@@ -6,7 +6,7 @@ from utils import collate_fn
 from dataset_tokenizer import SubwordDatasetTokenizer
 
 class NewsDataset(Dataset):
-    def __init__(self, data_dir, special_tokens, split_type, vocabulary_file, version='1'):
+    def __init__(self, data_dir, special_tokens, split_type, vocabulary_file, version='1', max_samples = None):
         """
         Initializes the NewsDataset class.
 
@@ -28,8 +28,8 @@ class NewsDataset(Dataset):
         self.idx_to_token = {idx: token for token, idx in self.vocabulary.items()}
 
         # Load the tokenized text and summaries and the correspondive metrics
-        self.texts = self.load_data(f'{split_type}_text.pickle')
-        self.summaries = self.load_data(f'{split_type}_high.pickle')
+        self.texts = self.load_data(f'{split_type}_text.pickle')[:max_samples]
+        self.summaries = self.load_data(f'{split_type}_high.pickle')[:max_samples]
         if self.version == '2':
             self.tf_texts = self.load_data(f'{split_type}_tf_text.pickle')
             self.tf_summaries = self.load_data(f'{split_type}_tf_high.pickle')
