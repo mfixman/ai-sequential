@@ -7,16 +7,14 @@ import logging
 
 from collections import defaultdict
 from dataset import NewsDataset
-from dataset_tokenizer import SubwordDatasetTokenizer
 from logger import Logger
 from scores import rouge_scores
 from torch import tensor, FloatTensor, LongTensor
 from torch.utils.data import DataLoader
-from transformers import AutoTokenizer
 from utils import load_config, collate_fn, collate_fn_v2, CrossSimilarityLoss, select_model
 from wandb import Artifact
 
-from torchmetrics.text.rouge import ROUGEScore
+import scores
 
 torch.manual_seed(42)
 # os.environ['https_proxy'] = "http://hpc-proxy00.city.ac.uk:3128" # Proxy to train with hyperion
@@ -24,10 +22,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Trainer:
 	def __init__(self):
-		self.tokenizer = AutoTokenizer.from_pretrained(
-			'bert-base-uncased'
-		)
-		self.rougeScore = ROUGEScore()
 		self.artifact_to_delete = None
 
 	def train(self, data_settings, model_settings, train_settings, logger):
@@ -228,9 +222,7 @@ class Trainer:
 
 			# Apologies for the CPU-bound `for`.
 			for o, t in zip(output, trg):
-				output_text = self.tokenizer.decode(o.argmax(dim = 1), skip_special_tokens = True).join(' ')
-				trg_text = self.tokenizer.decode(t, skip_special_tokens = True).join(' ')
-				rouges = self.rougeScore(output_text, trg_text)
+				rouges = scores.rouge_scores(o, t)
 				sum_scores = {k: sum_scores[k] + v for k, v in rouges.items()}
 
 			loss = criterion.get_loss(output.reshape(-1, output.shape[2]), trg.reshape(-1), dec_out, emb_trg)

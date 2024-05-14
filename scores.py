@@ -5,7 +5,7 @@ from torch import FloatTensor, LongTensor, Tensor
 
 def rouge_scores(output: FloatTensor, trg: LongTensor) -> dict[str, FloatTensor]:
     inferred = output.argmax(axis = 1)
-    return rouge1_scores(inferred, trg) | route2_scores(inferred, trg)
+    return rouge1_scores(inferred, trg) | rouge2_scores(inferred, trg)
 
 def count_repeated(t : Tensor) -> Tensor:
     n = t.shape[0]
@@ -19,12 +19,10 @@ def count_repeated(t : Tensor) -> Tensor:
     return torch.stack([t, rep], dim = 1)
 
 # This Rouge1 score takes each token as separate for repetitions.
+# Note that this only takes a single element, not a batch size.
 def rouge1_scores(inferred: LongTensor, trg: LongTensor) -> dict[str, FloatTensor]:
     infer_rep = count_repeated(inferred)
     trg_rep = count_repeated(trg)
-
-    print(infer_rep.shape)
-    print(trg_rep.shape)
 
     union = torch.cat([infer_rep, trg_rep], dim = 0)
     _, counts = torch.unique(union, return_counts = True, dim = 0)
@@ -40,6 +38,7 @@ def rouge1_scores(inferred: LongTensor, trg: LongTensor) -> dict[str, FloatTenso
     )
 
 # This Rouge2 UNIQUES ALL THE 2-GRAMS.
+# Note that this only takes a single element, not a batch size.
 def rouge2_scores(inferred: LongTensor, trg: LongTensor) -> dict[str, FloatTensor]:
     bigrams_left = torch.unique(torch.stack([inferred[:-1], inferred[1:]]), dim = 1)
     bigrams_right = torch.unique(torch.stack([trg[:-1], trg[1:]]), dim = 1)
