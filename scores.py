@@ -5,6 +5,7 @@ from torch import FloatTensor, LongTensor, Tensor
 
 def rouge_scores(output: FloatTensor, trg: LongTensor) -> dict[str, FloatTensor]:
     inferred = output.argmax(axis = 1)
+    trg = trg[trg != 0][:-1]
     return rouge1_scores(inferred, trg) | rouge2_scores(inferred, trg)
 
 def count_repeated(t : Tensor) -> Tensor:
@@ -17,6 +18,7 @@ def count_repeated(t : Tensor) -> Tensor:
 
     rep = q.T[keep.T] - 1
     return torch.stack([t, rep], dim = 1)
+
 
 # This Rouge1 score takes each token as separate for repetitions.
 # Note that this only takes a single element, not a batch size.
