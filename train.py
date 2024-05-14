@@ -133,7 +133,7 @@ class Trainer:
 	def train_loop(self, model, train_loader, criterion, optimizer, model_settings, clip=1):
 		logging.info('Starting training')
 		model.train()
-		epoch_loss = 0
+		epoch_loss = 0.
 		dec_out = None # Placeholder
 		emb_trg = None # Placeholder
 
@@ -185,8 +185,8 @@ class Trainer:
 		logging.info('Starting validation')
 		model.eval()
 
-		epoch_loss = tensor(0.).to(device)
-		sum_scores = defaultdict(lambda: tensor(0.).to(device))
+		epoch_loss = 0.
+		sum_scores = defaultdict(lambda: 0.)
 		dec_out = None # Placeholder
 		emb_trg = None # Placeholder
 
@@ -223,13 +223,13 @@ class Trainer:
 			# Apologies for the CPU-bound `for`.
 			for o, t in zip(output, trg):
 				rouges = scores.rouge_scores(o, t)
-				sum_scores = {k: sum_scores[k] + v for k, v in rouges.items()}
+				sum_scores = {k: sum_scores[k] + v.item() for k, v in rouges.items()}
 
 			loss = criterion.get_loss(output.reshape(-1, output.shape[2]), trg.reshape(-1), dec_out, emb_trg)
 			l1_lambda = 0.00001
 			l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
 			loss += l1_lambda*l1_norm
-			epoch_loss += loss
+			epoch_loss += loss.item()
 
 		avg_loss = epoch_loss / len(val_loader)
 		avg_scores = {k: v / len(val_loader.dataset) for k, v in sum_scores.items()}
