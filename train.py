@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+import wandb
 import logging
 
 from collections import defaultdict
@@ -14,6 +14,7 @@ from torch import tensor, FloatTensor, LongTensor
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 from utils import load_config, collate_fn, collate_fn_v2, CrossSimilarityLoss, select_model
+from wandb import Artifact
 
 from torchmetrics.text.rouge import ROUGEScore
 
@@ -27,6 +28,7 @@ class Trainer:
 			'bert-base-uncased'
 		)
 		self.rougeScore = ROUGEScore()
+		self.artifact_to_delete = None
 
 	def train(self, data_settings, model_settings, train_settings, logger):
 		# Dataset
@@ -99,8 +101,40 @@ class Trainer:
 			if val_loss < min_loss:
 				print(f'Loss decreased ({min_loss:.4f} --> {val_loss:.4f}). Saving model ...')
 				ckpt = {'epoch': epoch, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
-				torch.save(ckpt, f"{train_settings['checkpoint_folder']}/{model_settings['model_name']}_v{model_settings['version']}_ckt.pth")
+				# torch.save(ckpt, f"{train_settings['checkpoint_folder']}/{model_settings['model_name']}_v{model_settings['version']}_ckt.pth")
+				self.save_artifacts(model, optimizer)
 				min_loss = val_loss
+
+	def save_artifacts(self, model, optimizer, **metadata):
+		artifact = dict(
+			model_weights = model.state_dict(),
+			optimizer_state = optimizer.state_dict(),
+		)
+		torch.save(artifact, 'model.pth')
+
+		api = wandb.Api()
+		wandb_label = f'{wandb.run.id}_best'
+		name = 'model_weights'
+
+		artifact = Artifact(name, type = 'model', metadata = metadata)
+		artifact.add_file('model.pth')
+
+		labels = [wandb_label]
+		wandb.log_artifact(artifact, aliases = labels)
+
+		if self.artifact_to_delete is not None:
+			logging.info(f'Deleting old artifact with ID {self.artifact_to_delete.id}')
+			self.artifact_to_delete.delete()
+			self.artifact_to_delete = None
+
+		try:
+			old_artifact = api.artifact(f'{wandb.run.entity}/{wandb.run.project}/{name}:{wandb_label}')
+			old_artifact.aliases = []
+			old_artifact.save()
+
+			self.artifact_to_delete = old_artifact
+		except wandb.errors.CommError as e:
+			logging.info(f'First artifact, not deleting ({e})')
 
 	def train_loop(self, model, train_loader, criterion, optimizer, model_settings, clip=1):
 			model.train()
