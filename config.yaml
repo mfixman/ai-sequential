@@ -3,21 +3,21 @@ data_settings:
     vocabulary_path: 'tokenized_data_subword_v2/vocabulary.pickle'
     special_tokens: ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']
 model_params:
-    model_name: 'transformer'
-    version: '2'
+    model_name: 'seq2seq'
+    version: '1'
     encoder_embedding_dim: 512
     decoder_embedding_dim: 512
     hidden_dim: 512
-    num_layers: 6
+    num_layers: 3
     dropout: 0.2
 train:
     epochs: 30
-    batch_size: 1
+    batch_size: 6
     learning_rate: 0.00001
-    loss: 'CrossSimilarity' # 'CrossEntropy' or 'CrossSimilarity' | note: 'CrossSimilarity' works only for transformer
+    loss: 'CrossEntropy' # 'CrossEntropy' or 'CrossSimilarity' | note: 'CrossSimilarity' works only for transformer
     checkpoint_folder: 'checkpoints'
     load_checkpoint : False
-    log: True
+    log: False
     max_samples: 10
 infer:
     batch_size: 1

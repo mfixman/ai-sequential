@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 
+from models import EncoderLSTM, DecoderLSTM, Seq2Seq, AttDecoderLSTM, AttSeq2Seq, Transformer, TransformerV2
 
 def load_config(config_path='config.yaml'):
     with open(config_path, 'r') as f:
@@ -28,6 +29,46 @@ def collate_fn_v2(batch):
     idf_summary_tensors_padded = pad_sequence(idf_summary_tensors, batch_first=True, padding_value=0)
 
     return text_tensors_padded, summary_tensors_padded, tf_text_tensors_padded, tf_summary_tensors_padded, idf_text_tensors_padded, idf_summary_tensors_padded
+
+def select_model(INPUT_DIM, OUTPUT_DIM, PAD_IDX, model_settings, device):
+
+    if model_settings['model_name'] == 'seq2seq':
+        encoder = EncoderLSTM(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+		#decoder = DecoderLSTM(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'])
+		#model = Seq2Seq(encoder, decoder, device).to(device)
+        decoder = AttDecoderLSTM(OUTPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+        model = AttSeq2Seq(encoder, decoder, device).to(device)
+    elif model_settings['model_name'] == 'transformer':
+        print("Using Transformer\n")
+        if model_settings['version'] == '1':
+            model = Transformer(
+                    vocab_size=OUTPUT_DIM, 
+                    pad_idx=PAD_IDX, 
+                    emb_size=model_settings['encoder_embedding_dim'], 
+                    num_layers=model_settings['num_layers'], 
+                    forward_expansion=4,
+                    heads=8,
+                    dropout=model_settings['dropout'],
+                    device=device
+                    ).to(device)
+        elif model_settings['version'] == '2':
+            model = TransformerV2(
+				    vocab_size=OUTPUT_DIM, 
+				    pad_idx=PAD_IDX, 
+				    emb_size=model_settings['encoder_embedding_dim'], 
+				    num_layers=model_settings['num_layers'], 
+				    forward_expansion=4,
+				    heads=8,
+				    dropout=model_settings['dropout'],
+				    device=device
+			        ).to(device)
+        else:
+            raise ValueError("Version not supported!")
+    else:
+        raise ValueError("Selected model not available. Please choose between 'seq2seq' and 'transformer'")
+    
+    return model
+
 
 class CrossSimilarityLoss():
     """

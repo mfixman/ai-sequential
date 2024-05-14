@@ -271,7 +271,7 @@ class AttSeq2Seq(nn.Module):
             out = torch.multinomial(top_k_probs.view(-1, k), 1).view(-1, output.shape[1]) # Sampling from the top k probabilities to get the indices
             out = torch.gather(top_k_indices, 2, out.unsqueeze(-1)).squeeze(-1) # Map back the indices to vocabulary index
             print(f"out: {out.shape}\n{out}")
-            out_seq[:,t] = out
+            out_seq[:,t] = out.squeeze(1)
             print(f"out seq: {out_seq.shape}\n{out_seq}")
 
             input = (trg[:, t] if teacher_force else out.squeeze(0)).detach()
