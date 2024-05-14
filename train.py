@@ -137,56 +137,58 @@ class Trainer:
 			logging.info(f'First artifact, not deleting ({e})')
 
 	def train_loop(self, model, train_loader, criterion, optimizer, model_settings, clip=1):
-			logging.info('Starting training')
-			model.train()
-			epoch_loss = 0
-			dec_out = None # Placeholder
-			emb_trg = None # Placeholder
+		logging.info('Starting training')
+		model.train()
+		epoch_loss = 0
+		dec_out = None # Placeholder
+		emb_trg = None # Placeholder
 
-			for i, (src, trg, *rest) in enumerate(train_loader):
+		for i, (src, trg, *rest) in enumerate(train_loader):
+			if i % 10 == 0:
 				logging.info(f'Parsing {i}/{len(train_loader)}')
 
-				src, trg = src.to(device), trg.to(device)
-				if model_settings['version'] == '1' and model_settings['model_name'] == 'seq2seq':
-					output, out_seq, attentions = model(src, trg) # trg shape: [batch_size, trg_len]
-					output_dim = output.shape[-1]
-					output = output[1:].view(-1, output_dim)
-					trg = trg[1:].reshape(-1)
-				elif model_settings['version'] == '1' and model_settings['model_name'] == 'transformer':
-					trg_input = trg[:, :-1] #remove last token of trg
-					output; dec_out, emd_trg = model(src, trg_input)
-					output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-					trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
-					output = output.reshape(-1, output.shape[-1])  # Reshape to [batch_size*trg_len, vocab_size]
-				elif model_settings['version'] == '2' and model_settings['model_name'] == 'transformer':
-					tf_src, tf_trg, idf_src, idf_trg = rest
-					tf_src, tf_trg, idf_src, idf_trg = tf_src.to(device), tf_trg.to(device), idf_src.to(device), idf_trg.to(device)
+			src, trg = src.to(device), trg.to(device)
+			if model_settings['version'] == '1' and model_settings['model_name'] == 'seq2seq':
+				output, out_seq, attentions = model(src, trg) # trg shape: [batch_size, trg_len]
+				output_dim = output.shape[-1]
+				output = output[1:].view(-1, output_dim)
+				trg = trg[1:].reshape(-1)
+			elif model_settings['version'] == '1' and model_settings['model_name'] == 'transformer':
+				trg_input = trg[:, :-1] #remove last token of trg
+				output; dec_out, emd_trg = model(src, trg_input)
+				output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
+				trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
+				output = output.reshape(-1, output.shape[-1])  # Reshape to [batch_size*trg_len, vocab_size]
+			elif model_settings['version'] == '2' and model_settings['model_name'] == 'transformer':
+				tf_src, tf_trg, idf_src, idf_trg = rest
+				tf_src, tf_trg, idf_src, idf_trg = tf_src.to(device), tf_trg.to(device), idf_src.to(device), idf_trg.to(device)
 
-					trg_input = trg[:, :-1] #remove last token of trg
-					tf_trg_input = tf_trg[:, :-1]
-					idf_trg_input = idf_trg[:, :-1]
-					output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
-					output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-					trg = trg[:, 1:].reshape(-1) # Remove first token and reshape to [batch_size*trg_len]
-					output = output.reshape(-1, output.shape[-1]) # Reshape to [batch_size*trg_len, vocab_size]
-				else:
-					raise ValueError(f"Model version {model_settings['version']} with model name {model_settings['model_name']} not valid!")
+				trg_input = trg[:, :-1] #remove last token of trg
+				tf_trg_input = tf_trg[:, :-1]
+				idf_trg_input = idf_trg[:, :-1]
+				output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
+				output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
+				trg = trg[:, 1:].reshape(-1) # Remove first token and reshape to [batch_size*trg_len]
+				output = output.reshape(-1, output.shape[-1]) # Reshape to [batch_size*trg_len, vocab_size]
+			else:
+				raise ValueError(f"Model version {model_settings['version']} with model name {model_settings['model_name']} not valid!")
 
-				optimizer.zero_grad()
-				loss = criterion.get_loss(output, trg, dec_out, emb_trg)
-				l1_lambda = 0.00001
-				l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
-				loss += l1_lambda*l1_norm
-				loss.backward()
-				torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
-				optimizer.step()
-				epoch_loss += loss.item()
+			optimizer.zero_grad()
+			loss = criterion.get_loss(output, trg, dec_out, emb_trg)
+			l1_lambda = 0.00001
+			l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
+			loss += l1_lambda*l1_norm
+			loss.backward()
+			torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
+			optimizer.step()
+			epoch_loss += loss.item()
 
-			avg_loss = epoch_loss / len(train_loader)
-			return avg_loss
+		avg_loss = epoch_loss / len(train_loader)
+		return avg_loss
 
 	@torch.no_grad()
 	def validation_loop(self, model, val_loader, criterion, model_settings) -> tuple[FloatTensor, dict[str, FloatTensor]]:
+		logging.info('Starting validation')
 		model.eval()
 
 		epoch_loss = tensor(0.).to(device)
@@ -195,6 +197,9 @@ class Trainer:
 		emb_trg = None # Placeholder
 
 		for i, (src, trg, *rest) in enumerate(val_loader):
+			if i % 10 == 0:
+				logging.info(f'Parsing {i}/{len(val_loader)}')
+
 			src, trg = src.to(device), trg.to(device)
 
 			if model_settings['version'] == '1' and model_settings['model_name'] == 'seq2seq':
