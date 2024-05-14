@@ -9,7 +9,7 @@ from collections import Counter
 import math
 
 class DatasetTokenizer:
-    def __init__(self, saving_path='', ngram_size=1):
+    def __init__(self, saving_path = None, ngram_size=1):
         """
         Initializes the DatasetTokenizer class.
 
@@ -23,10 +23,11 @@ class DatasetTokenizer:
         self.special_tokens = ["<pad>", "<sos>", "<eos>", "<unk>"]
         self.vocabulary = set()
 
-        try:
-            os.mkdir(self.saving_path)
-        except FileExistsError:
-            pass
+        if self.saving_path is not None:
+            try:
+                os.mkdir(self.saving_path)
+            except FileExistsError:
+                pass
 
     def load_dataset(self):
         """Loads the dataset."""
@@ -113,7 +114,7 @@ class DatasetTokenizer:
 
 
 class SubwordDatasetTokenizer(DatasetTokenizer):
-    def __init__(self, saving_path='', model_name='bert-base-uncased'):
+    def __init__(self, saving_path = None, model_name='bert-base-uncased'):
         """
         Initializes the SubwordDatasetTokenizer class.
 

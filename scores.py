@@ -8,23 +8,24 @@ def rouge_scores(output: FloatTensor, trg: LongTensor) -> dict[str, FloatTensor]
     return rouge1_scores(inferred, trg) | route2_scores(inferred, trg)
 
 def count_repeated(t : Tensor) -> Tensor:
-    n = t.shape[0]
+    b = t.shape[0]
+    n = t.shape[1]
 
     _, inv = t.unique(return_inverse = True)
-    exp = inv.expand(n, n)
-    keep = exp == torch.arange(0, n).to(t.device).unsqueeze(1)
-    q = keep.cumsum(dim = 1)
+    exp = inv.expand(b, n, n)
+    keep = exp == torch.arange(0, n).to(t.device).expand(b, n).unsqueeze(2)
+    q = keep.cumsum(dim = -1)
 
     rep = q.T[keep.T] - 1
-    return torch.stack([t, rep], dim = 0)
+    return torch.stack([t, rep], dim = 1)
 
 # This Rouge1 score takes each token as separate for repetitions.
 def rouge1_scores(inferred: LongTensor, trg: LongTensor) -> dict[str, FloatTensor]:
     infer_rep = count_repeated(inferred)
     trg_rep = count_repeated(trg)
 
-    union = torch.cat([infer_rep, trg_rep], dim = 1)
-    _, counts = torch.unique(union, return_counts = True, dim = 1)
+    union = torch.cat([infer_rep, trg_rep], dim = -1)
+    _, counts = torch.unique(union, return_counts = True, dim = -1)
 
     intersection_size = torch.sum(counts == 2)
     precision = intersection_size / inferred.shape[0]
