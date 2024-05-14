@@ -7,12 +7,24 @@ def rouge_scores(output: FloatTensor, trg: LongTensor) -> dict[str, FloatTensor]
     inferred = output.argmax(axis = 1)
     return rouge1_scores(inferred, trg) | rouge2_scores(inferred, trg)
 
-def count_repeated(t : Tensor) -> Tensor:
-    n = t.shape[0]
+# t : b x w
+def count_repeated(t : LongTensor) -> Tensor:
+    device = t.device
 
-    _, inv = t.unique(return_inverse = True)
-    exp = inv.expand(n, n)
-    keep = exp == torch.arange(0, n).to(t.device).expand(n).unsqueeze(1)
+    b = t.shape[0]
+    w = t.shape[1]
+
+    numbers = torch.arange(0, b).to(device).unsqueeze(1).expand(b, w)
+    flat = torch.stack([numbers.flatten(), t.flatten()], dim = 0)
+
+    uniq, inv = flat.unique(return_inverse = True, dim = 1)
+    inv = inv.reshape(b, w)
+    print(uniq)
+    print(flat)
+    return inv
+
+    exp = inv.expand(b, w, w)
+    keep = exp == torch.arange(0, w).to(t.device).expand(w).unsqueeze(1)
     q = keep.cumsum(dim = -1)
 
     rep = q.T[keep.T] - 1
