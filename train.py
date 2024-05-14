@@ -35,7 +35,7 @@ class Trainer:
 		train_dataset = NewsDataset(
 			data_dir=data_settings['dataset_path'],
 			special_tokens=data_settings['special_tokens'],
-			split_type='validation',
+			split_type='train',
 			vocabulary_file=data_settings['vocabulary_path'],
 			version=model_settings['version'],
 			max_samples = train_settings['max_samples']
@@ -265,14 +265,6 @@ def main():
 		logger = wandb_logger.get_logger()
 	else:
 		logger = None
-
-	print("\n############## MODEL SETTINGS ##############")
-	print(model_setting)
-	print()
-
-	print("\n############## TRAINING SETTINGS ##############")
-	print(train_setting)
-	print()
 
 	trainer = Trainer()
 	trainer.train(data_setting, model_setting, train_setting, logger)
