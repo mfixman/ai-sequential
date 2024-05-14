@@ -63,7 +63,7 @@ class Trainer:
 		PAD_IDX = train_dataset.vocabulary[data_settings['special_tokens'][0]]
 		print(f"\nVocabulary size: {INPUT_DIM}\n")
 		model = select_model(INPUT_DIM, OUTPUT_DIM, PAD_IDX, model_settings, device)
-		
+
 		# Optimizer
 		optimizer = torch.optim.Adam(model.parameters(), lr=train_settings['learning_rate'], betas=(0.9, 0.98), eps=1e-9)
 
@@ -137,59 +137,50 @@ class Trainer:
 			logging.info(f'First artifact, not deleting ({e})')
 
 	def train_loop(self, model, train_loader, criterion, optimizer, model_settings, clip=1):
+			logging.info('Starting training')
 			model.train()
 			epoch_loss = 0
 			dec_out = None # Placeholder
 			emb_trg = None # Placeholder
 
-			if model_settings['version'] == '1':
-				for i, (src, trg) in enumerate(train_loader):
-					src, trg = src.to(device), trg.to(device)
-					optimizer.zero_grad()
-					if model_settings['model_name'] == 'seq2seq':
-						output, out_seq, attentions = model(src, trg) # trg shape: [batch_size, trg_len]
-						output_dim = output.shape[-1]
-						output = output[1:].view(-1, output_dim)
-						trg = trg[1:].reshape(-1)
-					elif model_settings['model_name'] == 'transformer':
-						trg_input = trg[:, :-1] #remove last token of trg
-						output; dec_out, emd_trg = model(src, trg_input) 
-						output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-						trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
-						output = output.reshape(-1, output.shape[-1])  # Reshape to [batch_size*trg_len, vocab_size]
-					
-					loss = criterion(output, trg, dec_out, emb_trg)
-					l1_lambda = 0.00001
-					l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
-					loss += l1_lambda*l1_norm
-					loss.backward()
-					torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
-					optimizer.step()
-					epoch_loss += loss.item()
-			elif model_settings['version'] == '2':
-				for i, (src, trg, tf_src, tf_trg, idf_src, idf_trg) in enumerate(train_loader):
-					src, trg = src.to(device), trg.to(device)
+			for i, (src, trg, *rest) in enumerate(train_loader):
+				logging.info(f'Parsing {i}/{len(train_loader)}')
+
+				src, trg = src.to(device), trg.to(device)
+				if model_settings['version'] == '1' and model_settings['model_name'] == 'seq2seq':
+					output, out_seq, attentions = model(src, trg) # trg shape: [batch_size, trg_len]
+					output_dim = output.shape[-1]
+					output = output[1:].view(-1, output_dim)
+					trg = trg[1:].reshape(-1)
+				elif model_settings['version'] == '1' and model_settings['model_name'] == 'transformer':
+					trg_input = trg[:, :-1] #remove last token of trg
+					output; dec_out, emd_trg = model(src, trg_input)
+					output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
+					trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
+					output = output.reshape(-1, output.shape[-1])  # Reshape to [batch_size*trg_len, vocab_size]
+				elif model_settings['version'] == '2' and model_settings['model_name'] == 'transformer':
+					tf_src, tf_trg, idf_src, idf_trg = rest
 					tf_src, tf_trg, idf_src, idf_trg = tf_src.to(device), tf_trg.to(device), idf_src.to(device), idf_trg.to(device)
-					optimizer.zero_grad()
-					if model_settings['model_name'] == 'transformer':
-						trg_input = trg[:, :-1] #remove last token of trg
-						tf_trg_input = tf_trg[:, :-1]
-						idf_trg_input = idf_trg[:, :-1]
-						output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
-						output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-						trg = trg[:, 1:].reshape(-1) # Remove first token and reshape to [batch_size*trg_len]
-						output = output.reshape(-1, output.shape[-1]) # Reshape to [batch_size*trg_len, vocab_size]
-					else:
-						raise ValueError("Model not valid! Only 'transformer' is supported for version '2'.")
-					
-					loss = criterion.get_loss(output, trg, dec_out, emb_trg)
-					l1_lambda = 0.00001
-					l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
-					loss += l1_lambda*l1_norm
-					loss.backward()
-					torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
-					optimizer.step()
-					epoch_loss += loss.item()
+
+					trg_input = trg[:, :-1] #remove last token of trg
+					tf_trg_input = tf_trg[:, :-1]
+					idf_trg_input = idf_trg[:, :-1]
+					output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
+					output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
+					trg = trg[:, 1:].reshape(-1) # Remove first token and reshape to [batch_size*trg_len]
+					output = output.reshape(-1, output.shape[-1]) # Reshape to [batch_size*trg_len, vocab_size]
+				else:
+					raise ValueError(f"Model version {model_settings['version']} with model name {model_settings['model_name']} not valid!")
+
+				optimizer.zero_grad()
+				loss = criterion.get_loss(output, trg, dec_out, emb_trg)
+				l1_lambda = 0.00001
+				l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
+				loss += l1_lambda*l1_norm
+				loss.backward()
+				torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
+				optimizer.step()
+				epoch_loss += loss.item()
 
 			avg_loss = epoch_loss / len(train_loader)
 			return avg_loss
@@ -202,42 +193,41 @@ class Trainer:
 		sum_scores = defaultdict(lambda: tensor(0.).to(device))
 		dec_out = None # Placeholder
 		emb_trg = None # Placeholder
-		
+
 		for i, (src, trg, *rest) in enumerate(val_loader):
 			src, trg = src.to(device), trg.to(device)
 
-			if model_settings['version'] == '1':
-				if model_settings['model_name'] == 'seq2seq':
-					output, out_seq, attentions = model(src, trg) # trg shape: [batch_size, trg_len]
-					output_dim = output.shape[-1]
-					output = output[1:].view(-1, output_dim)
-					trg = trg[1:].reshape(-1)
-				elif model_settings['model_name'] == 'transformer':
-					trg_input = trg[:, :-1] #remove last token of trg
-					output, dec_out, emb_trg = model(src, trg_input) 
-					output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-					trg = trg[:, 1:].reshape(-1)
-					output = output.reshape(-1, output.shape[-1])
-			elif model_settings['version'] == '2':
+			if model_settings['version'] == '1' and model_settings['model_name'] == 'seq2seq':
+				output, out_seq, attentions = model(src, trg) # trg shape: [batch_size, trg_len]
+				output_dim = output.shape[-1]
+				output = output[1:].view(-1, output_dim)
+				trg = trg[1:].reshape(-1)
+			elif model_settings['version'] == '1' and model_settings['model_name'] == 'transformer':
+				trg_input = trg[:, :-1] #remove last token of trg
+				output, dec_out, emb_trg = model(src, trg_input)
+				output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
+				trg = trg[:, 1:].reshape(-1)
+				output = output.reshape(-1, output.shape[-1])
+			elif model_settings['version'] == '2' and model_settings['model_name'] == 'transformer':
 				tf_src, tf_trg, idf_src, idf_trg = rest
 				tf_src, tf_trg, idf_src, idf_trg = tf_src.to(device), tf_trg.to(device), idf_src.to(device), idf_trg.to(device)
-				if model_settings['model_name'] == 'transformer':
-					trg_input = trg[:, :-1] #remove last token of trg
-					tf_trg_input = tf_trg[:, :-1]
-					idf_trg_input = idf_trg[:, :-1]
-					output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
-					output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-					trg = trg[:, 1:] # .reshape(-1)
-					# output = output.reshape(-1, output.shape[-1])
-				else:
-					raise ValueError("Model not valid! Only 'transformer' is supported for version '2'.")
 
-			# KEEP IN MIND WE ARE STILL USING ZERO PLEASE CHANGE THIS!!!
-			output_text = self.tokenizer.decode(output.argmax(dim = 2)[0], skip_special_tokens = True).join(' ')
-			trg_text = self.tokenizer.decode(trg[0], skip_special_tokens = True).join(' ')
-			rouges = self.rougeScore(output_text, trg_text)
-			sum_scores = {k: sum_scores[k] + v for k, v in rouges.items()}
-			
+				trg_input = trg[:, :-1] #remove last token of trg
+				tf_trg_input = tf_trg[:, :-1]
+				idf_trg_input = idf_trg[:, :-1]
+				output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
+				output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
+				trg = trg[:, 1:] # .reshape(-1)
+			else:
+				raise ValueError(f"Model version {model_settings['version']} with model name {model_settings['model_name']} not valid!")
+
+			# Apologies for the CPU-bound `for`.
+			for o, t in zip(output, trg):
+				output_text = self.tokenizer.decode(o.argmax(dim = 1), skip_special_tokens = True).join(' ')
+				trg_text = self.tokenizer.decode(t, skip_special_tokens = True).join(' ')
+				rouges = self.rougeScore(output_text, trg_text)
+				sum_scores = {k: sum_scores[k] + v for k, v in rouges.items()}
+
 			loss = criterion.get_loss(output.reshape(-1, output.shape[2]), trg.reshape(-1), dec_out, emb_trg)
 			l1_lambda = 0.00001
 			l1_norm = sum(torch.linalg.norm(p, 1) for p in model.parameters())
@@ -278,7 +268,7 @@ def main():
 	print("\n############## TRAINING SETTINGS ##############")
 	print(train_setting)
 	print()
-	
+
 	trainer = Trainer()
 	trainer.train(data_setting, model_setting, train_setting, logger)
 
