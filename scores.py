@@ -19,29 +19,41 @@ def count_repeated(t : LongTensor) -> Tensor:
 
     uniq, inv = flat.unique(return_inverse = True, dim = 1)
     inv = inv.reshape(b, w)
-    print(uniq)
-    print(flat)
-    return inv
 
-    exp = inv.expand(b, w, w)
-    keep = exp == torch.arange(0, w).to(t.device).expand(w).unsqueeze(1)
-    q = keep.cumsum(dim = -1)
+    mins, _ = torch.min(inv, dim = 1, keepdims = True)
+    inv = inv - mins
 
-    rep = q.T[keep.T] - 1
-    return torch.stack([t, rep], dim = 1)
+    # Sorry Corina, but this is the best way to calculate this mess.
+    # #GPUPowah
+    exp = inv.unsqueeze(1).expand(b, w, w)
+    ran = torch.arange(0, w).to(t.device).unsqueeze(0).expand(w, w).T.unsqueeze(0).expand(b, w, w)
+    keep = exp == ran
+    q = keep.cumsum(dim = 2)
+
+    rep = (q.transpose(1, 2)[keep.transpose(1, 2)] - 1).reshape(b, w)
+    batch_num = torch.arange(0, b).to(device).unsqueeze(1).expand(b, w)
+    return torch.stack([t, rep + w * batch_num], dim = 2)
+
+def clean_tokens(t : LongTensor):
+    t = t[1:-1]
+    return t[t != 0]
 
 # This Rouge1 score takes each token as separate for repetitions.
 # Note that this only takes a single element, not a batch size.
 def rouge1_scores(inferred: LongTensor, trg: LongTensor) -> dict[str, FloatTensor]:
+    inferred = inferred[inferred != 0]
+
+    # _rep: <b, w, 2>
     infer_rep = count_repeated(inferred)
     trg_rep = count_repeated(trg)
 
-    union = torch.cat([infer_rep, trg_rep], dim = 0)
-    _, counts = torch.unique(union, return_counts = True, dim = 0)
+    # union: <b, 2 * w, 2>
+    union = torch.cat([infer_rep, trg_rep], dim = 1)
+    _, counts = torch.unique(union.flatten(0, 1), return_counts = True, dim = 0)
 
     intersection_size = torch.sum(counts == 2)
-    precision = intersection_size / inferred.shape[0]
-    recall = intersection_size / trg.shape[0]
+    precision = intersection_size / (inferred.shape[0] * inferred.shape[1])
+    recall = intersection_size / (trg.shape[0] * trg.shape[1])
     f1 = torch.nan_to_num(2 * (precision * recall) / (precision + recall), nan = 0)
     return dict(
         rouge1_precision = precision,
