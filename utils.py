@@ -34,10 +34,10 @@ def select_model(INPUT_DIM, OUTPUT_DIM, PAD_IDX, model_settings, device):
 
     if model_settings['model_name'] == 'seq2seq':
         encoder = EncoderLSTM(INPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
-		#decoder = DecoderLSTM(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'])
-		#model = Seq2Seq(encoder, decoder, device).to(device)
-        decoder = AttDecoderLSTM(OUTPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
-        model = AttSeq2Seq(encoder, decoder, device).to(device)
+        decoder = DecoderLSTM(OUTPUT_DIM, model_settings['decoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'])
+        model = Seq2Seq(encoder, decoder, device).to(device)
+        #decoder = AttDecoderLSTM(OUTPUT_DIM, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+        #model = AttSeq2Seq(encoder, decoder, device).to(device)
     elif model_settings['model_name'] == 'transformer':
         print("Using Transformer\n")
         if model_settings['version'] == '1':

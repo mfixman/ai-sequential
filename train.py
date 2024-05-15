@@ -197,26 +197,24 @@ class Trainer:
 			src, trg = src.to(device), trg.to(device)
 
 			if model_settings['version'] == '1' and model_settings['model_name'] == 'seq2seq':
-				output, out_seq, attentions = model(src, trg) # trg shape: [batch_size, trg_len]
-				output_dim = output.shape[-1]
-				output = output[1:].view(-1, output_dim)
-				trg = trg[1:].reshape(-1)
+				trg_input = trg[:, :-1] # Remove last token of trg
+				output, out_seq, attentions = model(src, trg) # trg shape: [batch_size, trg_len] -- output shape: [batch_size, trg_len, vocab_size]
+				trg = trg[:, 1:]
 			elif model_settings['version'] == '1' and model_settings['model_name'] == 'transformer':
-				trg_input = trg[:, :-1] #remove last token of trg
+				trg_input = trg[:, :-1] # Remove last token of trg
 				output, dec_out, emb_trg = model(src, trg_input)
 				output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-				trg = trg[:, 1:].reshape(-1)
-				output = output.reshape(-1, output.shape[-1])
+				trg = trg[:, 1:]
 			elif model_settings['version'] == '2' and model_settings['model_name'] == 'transformer':
 				tf_src, tf_trg, idf_src, idf_trg = rest
 				tf_src, tf_trg, idf_src, idf_trg = tf_src.to(device), tf_trg.to(device), idf_src.to(device), idf_trg.to(device)
 
-				trg_input = trg[:, :-1] #remove last token of trg
+				trg_input = trg[:, :-1] # Remove last token of trg
 				tf_trg_input = tf_trg[:, :-1]
 				idf_trg_input = idf_trg[:, :-1]
 				output, dec_out, emb_trg = model(src, trg_input, tf_src, tf_trg_input, idf_src, idf_trg_input)
 				output = output.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-				trg = trg[:, 1:] # .reshape(-1)
+				trg = trg[:, 1:]
 			else:
 				raise ValueError(f"Model version {model_settings['version']} with model name {model_settings['model_name']} not valid!")
 

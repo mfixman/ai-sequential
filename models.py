@@ -138,7 +138,7 @@ class Seq2Seq(nn.Module):
 
             #print(f"Shape: {out_seq.type(torch.LongTensor).shape}   Dec Input: {out_seq.type(torch.LongTensor)}")
 
-        return outputs, out_seq.type(torch.LongTensor)
+        return outputs, out_seq.type(torch.LongTensor), None
 
 class BahdanauAttention(nn.Module):
     def __init__(self, hidden_size):
