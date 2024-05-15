@@ -27,6 +27,7 @@ class TransformerV1(SuperTransformer):
 			num_decoder_layers=model_settings['num_layers'],
 			dim_feedforward= 4 * self.emb_size,
 			dropout=model_settings['dropout'],
+			batch_first = True,
 		)
 		self.fc_out = nn.Linear(self.emb_size, output_dim)
 		self.pad_idx = pad_idx
@@ -57,17 +58,10 @@ class TransformerV1(SuperTransformer):
 		# src_padding_mask, trg_padding_mask shape: [batch_size, seq_len]
 		src_mask, trg_mask, src_padding_mask, trg_padding_mask = self.create_mask(src, trg)
 
-		# Reshape for nn.Transformer
-		embed_src = embed_src.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
-		embed_trg = embed_trg.permute(1,0,2) # shape [seq_len, batch_size, emb_dim]
-
-		# decoder_out shape: [seq_len, batch_size, emb_dim]
+		# decoder_out shape: [batch_size, seq_len, emb_dim]
 		decoder_out = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
 
-		# out shape [seq_len, batch_size, vocab_size]
+		# out shape [batch_size, seq_len, vocab_size]
 		out = self.fc_out(decoder_out)
-
-		output = out.permute(1,0,2) # Reshape output to [batch_size, trg_len, vocab_size]
-
-		return output
+		return out
 
