@@ -16,9 +16,17 @@ import torch.nn.functional as F
 class Seq2SeqV1(nn.Module):
 	def __init__(self, input_dim, output_dim, pad_idx, model_settings):
 		super().__init__()
-		self.encoder = EncoderLSTM(input_dim, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
-		self.decoder = AttDecoderLSTM(output_dim, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], model_settings['num_layers'], model_settings['dropout'])
+
+		if model_settings['num_layers'] != 3:
+			logging.warn('Setting number of layers to 3 for Seq2Seq models.')
+
+		num_layers = 3
+
+		self.encoder = EncoderLSTM(input_dim, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], num_layers, model_settings['dropout'])
+		self.decoder = AttDecoderLSTM(output_dim, model_settings['encoder_embedding_dim'], model_settings['hidden_dim'], model_settings['hidden_dim'], num_layers, model_settings['dropout'])
 		self.model = AttSeq2Seq(self.encoder, self.decoder)
+
+		print('Using model Seq2Seq', flush = True)
 
 	def forward(self, src, trg, *rest):
 		self.device = src.device

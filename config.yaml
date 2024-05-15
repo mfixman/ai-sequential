@@ -3,12 +3,12 @@ data_settings:
     vocabulary_path: 'tokenized_data_subword_v2/vocabulary.pickle'
     special_tokens: ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']
 model_params:
-    model_name: 'seq2seq'
-    version: '1'
+    model_name: 'transformer'
+    version: '2'
     encoder_embedding_dim: 512
     decoder_embedding_dim: 512
     hidden_dim: 512
-    num_layers: 3
+    num_layers: 6
     dropout: 0.2
 train:
     epochs: 30
