@@ -2,13 +2,14 @@ import yaml
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
+from torch import tensor, FloatTensor, LongTensor
 
 def load_config(config_path='config.yaml'):
 	with open(config_path, 'r') as f:
 		config = yaml.safe_load(f)
 	return config
 
-def collate_fn(batch):
+def collate_fn(batch: list[LongTensor]) -> tuple[LongTensor, LongTensor]:
 	text_tensors, summary_tensors = zip(*batch)
 
 	text_tensors_padded = pad_sequence(text_tensors, batch_first=True, padding_value=0)
@@ -16,7 +17,7 @@ def collate_fn(batch):
 	
 	return text_tensors_padded, summary_tensors_padded
 	
-def collate_fn_v2(batch):
+def collate_fn_v2(batch: list[LongTensor]) -> tuple[LongTensor, LongTensor, LongTensor, LongTensor, LongTensor]:
 	text_tensors, summary_tensors, tf_text_tensors, tf_summary_tensors, idf_text_tensors, idf_summary_tensors = zip(*batch)
 		
 	text_tensors_padded = pad_sequence(text_tensors, batch_first=True, padding_value=0)

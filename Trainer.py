@@ -9,12 +9,13 @@ from torch import tensor, FloatTensor, LongTensor
 from torch.utils.data import DataLoader
 from utils import collate_fn, collate_fn_v2, CrossSimilarityLoss
 from wandb import Artifact
+from transformers import AutoTokenizer
 
 from models.Seq2SeqV1 import Seq2SeqV1
 from models.TransformerV1 import TransformerV1
 from models.TransformerV2 import TransformerV2
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class Trainer:
 	def __init__(self, data_settings, model_settings, train_settings, logger):
@@ -23,6 +24,7 @@ class Trainer:
 		self.model_settings = model_settings
 		self.train_settings = train_settings
 		self.logger = logger
+		self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
 
 		self.train_dataset = NewsDataset(
 			data_dir=self.data_settings['dataset_path'],
@@ -61,8 +63,16 @@ class Trainer:
 			raise ValueError(f"Unknown version and model {self.model_settings['version']} {self.model_settings['model_name']}")
 
 	def train(self):
-		train_loader = DataLoader(self.train_dataset, batch_size=self.train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=self.collate_fn)
-		val_loader = DataLoader(self.val_dataset, batch_size=self.train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=self.collate_fn)
+		loader_options = dict(
+			batch_size=self.train_settings['batch_size'],
+			shuffle=True,
+			num_workers=2,
+			collate_fn=self.collate_fn,
+			pin_memory = True,
+			pin_memory_device = device,
+		)
+		train_loader = DataLoader(self.train_dataset, **loader_options)
+		val_loader = DataLoader(self.val_dataset, **loader_options)
 
 		# Optimizer
 		self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.train_settings['learning_rate'], betas=(0.9, 0.98), eps=1e-9)
@@ -91,10 +101,11 @@ class Trainer:
 		for epoch in range(epoch_start, self.train_settings['epochs']):
 			train_loss = self.train_loop(train_loader, criterion)
 			val_loss, val_scores = self.validation_loop(val_loader, criterion)
+			val_examples = self.validation_examples(val_loader)
 
 			# print(f'Epoch: {epoch+1:02} | Train Loss: {train_loss:.3f} | Val Loss: {val_loss:.3f} | Val Score: {val_score:.3f}')
-			info = {'train_loss': train_loss, 'validation_loss': val_loss, **val_scores}
-			logging.info('\t'.join(f'{k}: {v:g}' for k, v in info.items()))
+			info = {'train_loss': train_loss, 'validation_loss': val_loss, 'first_example_out': val_examples[0][0], 'first_example_trg': val_examples[0][1], **val_scores}
+			logging.info('\t'.join(f'{k}: {v}' for k, v in info.items()))
 			if self.logger:
 				self.logger.log(info)
 
@@ -147,11 +158,11 @@ class Trainer:
 			if i % 10 == 0:
 				logging.info(f'Parsing {i}/{len(train_loader)}')
 
-			src, trg = src.to(device), trg.to(device)
-			rest = [r.to(device) for r in rest]
-			output = self.model(src, trg, *rest)
+			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
 
+			output = self.model(src, trg, *rest)
 			trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
+
 			output = output.reshape(-1, output.shape[-1]) # Reshape to [batch_size*trg_len, vocab_size]
 
 			self.optimizer.zero_grad()
@@ -182,10 +193,9 @@ class Trainer:
 			if i % 10 == 0:
 				logging.info(f'Parsing {i}/{len(val_loader)}')
 
-			src, trg = src.to(device), trg.to(device)
-			rest = [r.to(device) for r in rest]
-			output = self.model(src, trg, *rest)
+			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
 
+			output = self.model(src, trg, *rest)
 			trg = trg[:, 1:]
 
 			# Apologies for the CPU-bound `for`.
@@ -202,3 +212,21 @@ class Trainer:
 		avg_loss = epoch_loss / len(val_loader)
 		avg_scores = {k: v / len(val_loader.dataset) for k, v in sum_scores.items()}
 		return avg_loss, avg_scores
+
+	@torch.no_grad()
+	def validation_examples(self, val_loader):
+		self.model.eval()
+		examples = []
+		for i, (src, trg, *rest) in enumerate(val_loader):
+			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
+
+			output = self.model(src, trg, *rest).argmax(dim = 2)
+			for o, t in zip(output, trg):
+				out_phrase = self.tokenizer.decode(o, skip_special_tokens = True).join(' ')
+				trg_phrase = self.tokenizer.decode(t, skip_special_tokens = True).join(' ')
+				examples.append((out_phrase, trg_phrase))
+
+				if len(examples) == 10:
+					return examples
+
+		return examples
