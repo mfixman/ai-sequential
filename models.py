@@ -185,12 +185,9 @@ class AttDecoderLSTM(nn.Module):
         :param encoder_outputs: All encoder outputs.
         """
         #print(f"DEC INPUT SHAPE\ninput: {input.shape}\nhidden: {hidden.shape}\ncell:{cell.shape}\nenc_out: {encoder_outputs.shape}")
-        # input shape: [batch_size]
+        # input shape: [batch_size, trg_len=1]
         # hidden, cell shapes: [num_layers, batch_size, dec_hid_dim]
         # encoder_outputs shape: [batch_size, src_len, enc_hid_dim]
-
-        input = input.unsqueeze(-1)
-        # input shape: [batch_size, trg_len=1]
 
         embedded = self.dropout(self.embedding(input))
         # embedded shape: [batch_size, trg_len=1, dec_hid_dim]
@@ -202,8 +199,8 @@ class AttDecoderLSTM(nn.Module):
         # context shape: [batch_size, trg_len=1, dec_hid_dim]
         # att_weights shape: [batch_size, trg_len=1, src_len]
         context = self.layer_norm(context)
-        # Combine embedded input word and encoder outputs
-        rnn_input = torch.cat((embedded, context), dim=2)
+        
+        rnn_input = torch.cat((embedded, context), dim=2)  # Combine embedded input word and encoder outputs
         # rnn_input shape: [batch_size, trg_len=1, dec_hid_dim]
 
         output, (hidden, cell) = self.rnn(rnn_input, (hidden, cell))
@@ -228,8 +225,6 @@ class AttSeq2Seq(nn.Module):
         batch_size, trg_len = trg.shape
         _, src_len = src.shape
         trg_vocab_size = self.decoder.output_dim
-        #print(f"\nSrc shape: {src.shape}")
-        #print(f"Trg shape: {trg.shape}\n")
 
         outputs = torch.zeros(batch_size, trg_len, trg_vocab_size).to(self.device) # Tensor to store decoder outputs
         out_seq = torch.zeros(batch_size, trg_len).to(self.device) # Tensor to store the output sequence
@@ -246,41 +241,29 @@ class AttSeq2Seq(nn.Module):
 
         input = trg[:, 0] # First input to the decoder is the <sos> tokens
         out_seq[:, 0] = input
-
-        print(f"Input: {input.shape}\n{input}")
+        input = input.unsqueeze(-1)
 
         for t in range(1, trg_len):
             output, hidden, cell, att_weights = self.decoder(input, hidden, cell, encoder_outputs)
             # output shape: [batch_size, trg_len, voc_dim]
-            print(f"\nDecoder output: {output.shape}\n{output}")
             outputs[:, t, :] = output.squeeze(1)
             attentions[:, t, :] = att_weights.squeeze(1)
 
             teacher_force = random.random() < self.teacher_forcing_ratio
 
-            #print(f"Output shape: {output.shape}")
-            #print(f"Output: {output}")
-
             # Top-k sampling
             probs = torch.softmax(output, dim=-1)
-            print(f"Probs: {probs.shape}\n{probs}")
             k = 10
             top_k_probs, top_k_indices = torch.topk(probs, k, dim=-1)
-            print(f"Probs: {top_k_probs.shape}\n{top_k_probs}")
-            print(f"Probs idx: {top_k_indices.shape}\n{top_k_indices}")
             out = torch.multinomial(top_k_probs.view(-1, k), 1).view(-1, output.shape[1]) # Sampling from the top k probabilities to get the indices
             out = torch.gather(top_k_indices, 2, out.unsqueeze(-1)).squeeze(-1) # Map back the indices to vocabulary index
-            print(f"out: {out.shape}\n{out}")
             out_seq[:,t] = out.squeeze(1)
-            print(f"out seq: {out_seq.shape}\n{out_seq}")
 
-            input = (trg[:, t] if teacher_force else out.squeeze(0)).detach()
+            input = (trg[:, t].unsqueeze(-1) if teacher_force else out.squeeze(0)).detach()
             
             self.teacher_forcing_ratio -= (0.5 / 1000)  # Decrease by 0.0005 each step
             self.teacher_forcing_ratio = max(self.teacher_forcing_ratio, 0)  # Ensure it doesn't go below 0
 
-            #print(f"Shape: {out_seq.type(torch.LongTensor).shape}   Dec Input: {out_seq.type(torch.LongTensor)}")
-        #print(attentions)
         return outputs, out_seq.type(torch.LongTensor), attentions
 
 class SelfAttention(nn.Module):
