@@ -18,6 +18,14 @@ def parse_args():
 	parser.add_argument('--num-layers', type = int, help = 'Amount of layers of the model.')
 	parser.add_argument('--dropout', type = float, help = 'Dropout.')
 
+	parser.add_argument('--epochs', type = int, help = 'Amount of epochs to train from.')
+	parser.add_argument('--batch-size', type = int, help = 'Batch size.')
+	parser.add_argument('--learning-rate', type = float, help = 'Alpha of the model.')
+	parser.add_argument('--loss', type = str, default = 'CrossEntropy', help = 'Loss function')
+	parser.add_argument('--load-checkpoint', type = bool, default = False, help = 'Start loading a checkpoint.')
+	parser.add_argument('--log', type = bool, default = True, help = 'Log some data in Hyperion,')
+	parser.add_argument('--max-samples', type = int, help = 'Training samples to take data from.')
+
 	args = vars(parser.parse_args())
 	args = {k: v for k, v in args.items() if v is not None}
 
@@ -25,7 +33,9 @@ def parse_args():
 
 def main():
 	config = load_config()
-	config['model_params'] |= parse_args()
+	args = parse_args()
+	config['model_params'] |= args
+	config['train'] |= args
 
 	logging.basicConfig(
 		level = logging.INFO,

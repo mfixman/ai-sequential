@@ -61,6 +61,7 @@ class Trainer:
 			raise ValueError(f"Unknown version and model {self.model_settings['version']} {self.model_settings['model_name']}")
 
 	def train(self):
+		raise ValueError(f"Batch size is {self.train_settings['batch_size']}")
 		train_loader = DataLoader(self.train_dataset, batch_size=self.train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=self.collate_fn)
 		val_loader = DataLoader(self.val_dataset, batch_size=self.train_settings['batch_size'], shuffle=True, num_workers=2, collate_fn=self.collate_fn)
 
