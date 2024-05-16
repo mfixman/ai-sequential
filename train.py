@@ -1,5 +1,6 @@
 import torch
 import logging
+import wandb
 
 from utils import load_config
 from logger import Logger
@@ -33,11 +34,11 @@ def parse_args():
 
 	return args
 
-def main():
+def main(changes = {}):
 	config = load_config()
 	args = parse_args()
-	config['model_params'] |= args
-	config['train'] |= args
+	config['model_params'] |= args | changes
+	config['train'] |= args | changes
 
 	logging.basicConfig(
 		level = logging.INFO,
@@ -60,6 +61,17 @@ f"{model_setting['model_name']}_v{model_setting['version']}_lr={train_setting['l
 		logger = wandb_logger.get_logger()
 	else:
 		logger = None
+
+	sweep_params = ['learning_rate', 'varkappa']
+	change = False
+	for sp in sweep_params:
+		param = 'sweep_' + sp
+		if param in wandb.config:
+			train_setting[sp] = wandb.config[param]
+			model_setting[sp] = wandb.config[param]
+			change = True
+	if change:
+		logging.info(f'New settings for param sweep: {train_setting} {model_setting}')
 
 	torch.manual_seed(42)
 	trainer = Trainer(data_setting, model_setting, train_setting, logger)

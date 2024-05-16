@@ -11,7 +11,7 @@ model_params:
     num_layers: 6
     dropout: 0.2
 train:
-    epochs: 50
+    epochs: 5
     batch_size: 2
     learning_rate: 0.0001
     varkappa: 0
