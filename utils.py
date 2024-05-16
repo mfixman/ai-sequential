@@ -35,26 +35,20 @@ class CrossSimilarityLoss():
 	1. cross-entropy loss
 	2. combines cross-entropy loss and semantic similarity (cosine similarity) loss.
 	"""
-	def __init__(self, weight_semantic=0.3, weight_ce=0.7, pad_idx=0, criterion='CrossEntropy'):
+	def __init__(self, varkappa = 0.2, pad_idx=0):
 		"""
 		Parameters:
-			- weight_semantic (float): Weight of the semantic similarity loss in the combined loss calculation.
-			- weight_ce (float): Weight of the cross-entropy loss in the combined loss calculation.
 			- pad_idx (int): Index used for padding in sequences, which should be ignored in loss calculations.
-			- criterion (str): Choosen loss, 'CrossEntropy' (default) or 'CrossSimilarity'
 		"""
 		super().__init__()
-		self.weight_semantic = weight_semantic # Semantic loss weighting
-		self.weight_ce = weight_ce # Cross-entropy loss weighting
+		self.varkappa = varkappa
+		self.include_ccs_loss = self.varkappa > 0
+	
 		self.pad_idx = pad_idx # Padding index to ignore in loss calculations
-		self.criterion = criterion # Choosen loss
 		self.cross_entropy_loss = nn.CrossEntropyLoss(ignore_index=self.pad_idx)
 
-	def get_loss(self, output_logits, target_tokens, embedded_pred, embedded_target):
+	def get_loss(self, output_logits: FloatTensor, target_tokens: LongTensor, embedded_pred: None | FloatTensor, embedded_target: None | FloatTensor):
 		"""
-		If criterion=='CrossEntropy': calculate cross entropy. In this case embedded sequences will be ignored.
-		If criterion=='CrossSimilarity': calculate the combined loss (weighted sum) consisting of cross-entropy and semantic similarity.
-
 		Parameters:
 		- output_logits (Tensor): The logits from the model's output [batch_size*seq_len, vocab_size].
 		- target_tokens (Tensor): The ground truth token sequences [batch_size*seq_len].
@@ -65,12 +59,12 @@ class CrossSimilarityLoss():
 		- loss (Tensor): The calculated loss.
 		"""
 		ce_loss = self.cross_entropy_loss(output_logits, target_tokens) # Cross entropy loss calculation
-		if self.criterion == 'CrossEntropy':
+		if embedded_pred is None and embedded_target is None and self.include_ccs_loss:
 			return ce_loss
 
 		# Permute dimensions of embedded_pred and embedded_target to [batch_size, seq_len, emb_dim]
-		embedded_pred = embedded_pred.permute(1, 0, 2)
-		embedded_target = embedded_target.permute(1, 0, 2)
+		# embedded_pred = embedded_pred.permute(1, 0, 2)
+		# embedded_target = embedded_target.permute(1, 0, 2)
 
 		# Create a mask for padding tokens
 		mask = (target_tokens.view(embedded_pred.shape[0], embedded_pred.shape[1]) != self.pad_idx).unsqueeze(-1)  # Shape [batch_size, seq_len, 1]
@@ -88,6 +82,5 @@ class CrossSimilarityLoss():
 		valid_tokens = mask.float().sum(dim=[1, 2]) / embedded_pred.size(2)  # Normalize by emb_dim to count tokens, not elements
 		semantic_loss = 1 - (cosine_sims.sum(dim=1) / valid_tokens).mean()	# Normalize by number of valid tokens and average over sequence and batch
 
-		loss = self.weight_ce * ce_loss + self.weight_semantic * semantic_loss # Weighted sum of the cross-entropy and semantic similarity losses
-		
+		loss = (1 - self.varkappa) * ce_loss + self.varkappa * semantic_loss # Weighted sum of the cross-entropy and semantic similarity losses
 		return loss

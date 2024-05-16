@@ -82,8 +82,29 @@ class TransformerV2(SuperTransformer):
 		src_mask, trg_mask, src_padding_mask, trg_padding_mask = self.create_mask(src, trg)
 
 		# decoder_out shape: [batch_size, seq_len, emb_dim]
-		decoder_out = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
+		decoder_out_0 = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
+
+		memory = self.transformer.encoder(embed_src,
+											mask=src_mask, 
+											src_key_padding_mask=src_padding_mask, 
+											is_causal=False)
+		
+		decoder_out = self.transformer.decoder(embed_trg, 
+										 memory, 
+										 tgt_mask=trg_mask, 
+										 memory_mask=src_mask,
+										 tgt_key_padding_mask=trg_padding_mask,
+										 memory_key_padding_mask=src_padding_mask,
+										 tgt_is_causal=False, 
+										 memory_is_causal=False)
+		
+		trg_decoder_out = self.transformer.decoder(embed_trg,
+											 memory)
+		
+		print(torch.nn.CosineSimilarity(decoder_out_0, decoder_out))
+		print(f"{trg_decoder_out=}")
+		raise ValueError
 
 		# output shape [batch_size, seq_len, vocab_size]
 		output = self.fc_out(decoder_out)
-		return output
+		return output, decoder_out, embed_trg

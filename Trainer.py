@@ -160,7 +160,10 @@ class Trainer:
 
 			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
 
-			output = self.model(src, trg, *rest)
+			output, *hiddens = self.model(src, trg, *rest)
+			if hiddens:
+				dec_out, emb_trg = hiddens
+
 			trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
 
 			output = output.reshape(-1, output.shape[-1]) # Reshape to [batch_size*trg_len, vocab_size]
