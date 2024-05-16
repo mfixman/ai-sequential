@@ -64,7 +64,7 @@ class CrossSimilarityLoss():
 
 		# Calculate the mean only over non-padding elements
 		# valid_tokens = mask.sum(dim=[1, 2]) / embedded_pred.size(2)  # Normalize by emb_dim to count tokens, not elements
-		semantic_loss = cosine_sims.sum(dim=1).mean() # Normalize by number of valid tokens and average batch
+		semantic_loss = (1 - cosine_sims).sum(dim=1).mean() # Normalize by number of valid tokens and average batch
 
 		return semantic_loss
 
