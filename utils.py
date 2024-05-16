@@ -67,7 +67,7 @@ class CrossSimilarityLoss():
 
 		return semantic_loss
 
-	def get_losses(self, output_logits: FloatTensor, target_tokens: LongTensor, embedded_pred: None | FloatTensor, embedded_target: None | FloatTensor) -> tuple[FloatTensor, float, float]:
+	def get_losses(self, output_logits: FloatTensor, target_tokens: LongTensor, embedded_pred: FloatTensor, embedded_target: FloatTensor) -> tuple[FloatTensor, float, float]:
 		"""
 		Parameters:
 		- output_logits (Tensor): The logits from the model's output [batch_size*seq_len, vocab_size].
