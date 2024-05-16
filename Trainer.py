@@ -26,10 +26,14 @@ class Trainer:
 		self.logger = logger
 		self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
 
+		train_split_type = 'train'
+		if train_settings['train_validation_set']:
+			train_split_type = 'validation'
+
 		self.train_dataset = NewsDataset(
 			data_dir=self.data_settings['dataset_path'],
 			special_tokens=self.data_settings['special_tokens'],
-			split_type='train',
+			split_type=train_split_type,
 			vocabulary_file=self.data_settings['vocabulary_path'],
 			version=self.model_settings['version'],
 			max_samples = self.train_settings['max_samples']
