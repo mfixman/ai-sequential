@@ -59,7 +59,7 @@ class Seq2SeqV1(nn.Module):
 
 			out_seq[:, t] = input
 
-		return outputs
+		return outputs, None, None
 
 class EncoderLSTM(nn.Module):
 	def __init__(self, input_dim, emb_dim, enc_hid_dim, dec_hid_dim, num_layers=2, dropout=0.2):

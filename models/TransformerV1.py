@@ -63,5 +63,4 @@ class TransformerV1(SuperTransformer):
 
 		# out shape [batch_size, seq_len, vocab_size]
 		out = self.fc_out(decoder_out)
-		return out
-
+		return out, None, None

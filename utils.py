@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 from torch import tensor, FloatTensor, LongTensor
+import logging
 
 def load_config(config_path='config.yaml'):
 	with open(config_path, 'r') as f:
@@ -35,7 +36,7 @@ class CrossSimilarityLoss():
 	1. cross-entropy loss
 	2. combines cross-entropy loss and semantic similarity (cosine similarity) loss.
 	"""
-	def __init__(self, varkappa = 0.2, pad_idx=0):
+	def __init__(self, varkappa = 0, pad_idx=0):
 		"""
 		Parameters:
 			- pad_idx (int): Index used for padding in sequences, which should be ignored in loss calculations.
@@ -79,8 +80,11 @@ class CrossSimilarityLoss():
 		- loss (Tensor): The calculated loss.
 		"""
 		cce_loss = self.cross_entropy_loss(output_logits, target_tokens)
-		if embedded_pred is None and embedded_target is None and self.include_cs_loss:
-			return cce_loss
+		if embedded_pred is None and embedded_target is None:
+			if not self.include_cs_loss:
+				return cce_loss, cce_loss.item(), 0
+			else:
+				logging.error(f'Varkappa = {self.varkappa} > 0, but model did not give embedded values!')
 
 		semantic_loss = self.cosine_similarity_loss(target_tokens, embedded_pred, embedded_target)
 		loss = (1 - self.varkappa) * cce_loss + self.varkappa * semantic_loss 
