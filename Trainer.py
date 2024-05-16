@@ -94,22 +94,20 @@ class Trainer:
 
 		# Loss
 		criterion = CrossSimilarityLoss(
-			weight_semantic=0.2,
-			weight_ce=0.8,
 			pad_idx=self.train_dataset.vocabulary[self.data_settings['special_tokens'][0]],
-			criterion=self.train_settings['loss']
+			varkappa = self.train_settings['varkappa'],
 		)
 
 		# Train loop
 		min_loss = float('inf')
 		for epoch in range(epoch_start, self.train_settings['epochs']):
-			train_loss = self.train_loop(train_loader, criterion)
+			train_loss, train_scores = self.train_loop(train_loader, criterion)
 			val_loss, val_scores = self.validation_loop(val_loader, criterion)
 			val_examples = self.validation_examples(val_loader)
 
 			# print(f'Epoch: {epoch+1:02} | Train Loss: {train_loss:.3f} | Val Loss: {val_loss:.3f} | Val Score: {val_score:.3f}')
-			info = {'train_loss': train_loss, 'validation_loss': val_loss, 'first_example_out': val_examples[0][0], 'first_example_trg': val_examples[0][1], **val_scores}
-			logging.info('\t'.join(f'{k}: {v}' for k, v in info.items()))
+			info = {'train_loss': train_loss, 'validation_loss': val_loss, 'example': val_examples[0], **val_scores}
+			logging.info('Losses:\n' + '\n'.join(f'{k}: {v}' for k, v in info.items()))
 			if self.logger:
 				self.logger.log(info)
 
@@ -154,8 +152,9 @@ class Trainer:
 	def train_loop(self, train_loader, criterion, clip=1):
 		logging.info('Starting training')
 		epoch_loss = 0.
-		dec_out = None # Placeholder
-		emb_trg = None # Placeholder
+		sum_scores : dict[str, float] = defaultdict(lambda: 0.)
+		pred_dec_out = None
+		trg_dec_out = None
 
 		self.model.train()
 		for i, (src, trg, *rest) in enumerate(train_loader):
@@ -166,15 +165,16 @@ class Trainer:
 
 			output, *hiddens = self.model(src, trg, *rest)
 			if hiddens:
-				dec_out, emb_trg = hiddens
+				pred_dec_out, trg_dec_out = hiddens
 
 			trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
-
-			output = output.reshape(-1, output.shape[-1]) # Reshape to [batch_size*trg_len, vocab_size]
-
+			output = output.reshape(-1, output.shape[2]) # Reshape to [batch_size*trg_len, vocab_size]
 			self.optimizer.zero_grad()
 
-			loss = criterion.get_loss(output, trg, dec_out, emb_trg)
+			loss, cce_loss, semantic_loss = criterion.get_losses(output, trg, pred_dec_out, trg_dec_out)
+			sum_scores['cce_loss'] += cce_loss
+			sum_scores['cs_loss'] += semantic_loss
+
 			l1_lambda = 0.00001
 			l1_norm = sum(torch.linalg.norm(p, 1) for p in self.model.parameters())
 			loss += l1_lambda*l1_norm
@@ -184,7 +184,8 @@ class Trainer:
 			epoch_loss += loss.item()
 
 		avg_loss = epoch_loss / len(train_loader)
-		return avg_loss
+		avg_scores = {k: v / len(train_loader.dataset) for k, v in sum_scores.items()}
+		return avg_loss, avg_scores
 
 	@torch.no_grad()
 	def validation_loop(self, val_loader, criterion) -> tuple[FloatTensor, dict[str, FloatTensor]]:
@@ -192,8 +193,8 @@ class Trainer:
 
 		epoch_loss = 0.
 		sum_scores : dict[str, float] = defaultdict(lambda: 0.)
-		dec_out = None # Placeholder
-		emb_trg = None # Placeholder
+		pred_dec_out = None
+		trg_dec_out = None
 
 		self.model.eval()
 		for i, (src, trg, *rest) in enumerate(val_loader):
@@ -202,15 +203,22 @@ class Trainer:
 
 			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
 
-			output = self.model(src, trg, *rest)
-			trg = trg[:, 1:]
+			output, *hiddens = self.model(src, trg, *rest)
+			if hiddens:
+				pred_dec_out, trg_dec_out = hiddens
 
-			# Apologies for the CPU-bound `for`.
 			for o, t in zip(output, trg):
 				rouges = rouge_scores(o, t)
-				sum_scores = {k: sum_scores[k] + v.item() for k, v in rouges.items()}
+				for k, v in rouges.items():
+					sum_scores[k] += v.item()
 
-			loss = criterion.get_loss(output.reshape(-1, output.shape[2]), trg.reshape(-1), dec_out, emb_trg)
+			trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
+			output = output.reshape(-1, output.shape[-1]) # Reshape to [batch_size*trg_len, vocab_size]
+
+			loss, cce_loss, semantic_loss = criterion.get_losses(output, trg, pred_dec_out, trg_dec_out)
+			sum_scores['cce_loss'] += cce_loss
+			sum_scores['cs_loss'] += semantic_loss
+
 			l1_lambda = 0.00001
 			l1_norm = sum(torch.linalg.norm(p, 1) for p in self.model.parameters())
 			loss += l1_lambda*l1_norm
@@ -227,13 +235,21 @@ class Trainer:
 		for i, (src, trg, *rest) in enumerate(val_loader):
 			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
 
-			output = self.model(src, trg, *rest).argmax(dim = 2)
-			for o, t in zip(output, trg):
-				out_phrase = self.tokenizer.decode(o, skip_special_tokens = True).join(' ')
-				trg_phrase = self.tokenizer.decode(t, skip_special_tokens = True).join(' ')
-				examples.append((out_phrase, trg_phrase))
+			output_logits, *scores = self.model(src, trg, *rest)
+			output = output_logits.argmax(dim = 2)
+			for s, o, t in zip(src, output, trg):
+				src_phrase = self.tokenizer.decode(s, skip_special_tokens = True)
+				out_phrase = self.tokenizer.decode(o, skip_special_tokens = True)
+				trg_phrase = self.tokenizer.decode(t, skip_special_tokens = True)
+				examples.append(
+f'''
+< {src_phrase}
+= {out_phrase}
+> {trg_phrase}
+'''
+				)
 
-				if len(examples) == 10:
+				if len(examples) == 1:
 					return examples
 
 		return examples

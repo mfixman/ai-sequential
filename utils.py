@@ -42,12 +42,32 @@ class CrossSimilarityLoss():
 		"""
 		super().__init__()
 		self.varkappa = varkappa
-		self.include_ccs_loss = self.varkappa > 0
+		self.include_cs_loss = self.varkappa > 0
 	
 		self.pad_idx = pad_idx # Padding index to ignore in loss calculations
 		self.cross_entropy_loss = nn.CrossEntropyLoss(ignore_index=self.pad_idx)
 
-	def get_loss(self, output_logits: FloatTensor, target_tokens: LongTensor, embedded_pred: None | FloatTensor, embedded_target: None | FloatTensor):
+	def cosine_similarity_loss(self, target_tokens: LongTensor, embedded_pred: FloatTensor, embedded_target: FloatTensor) -> FloatTensor:
+		# Create a mask for padding tokens
+		mask = (target_tokens.view(embedded_pred.shape[0], embedded_pred.shape[1]) != self.pad_idx).unsqueeze(-1)  # Shape [batch_size, seq_len, 1]
+
+		# Expand the mask to the embedding dimension
+		mask = mask.expand(-1, -1, embedded_pred.size(-1))	# Expand to [batch_size, seq_len, emb_dim]
+
+		# Apply mask to embeddings
+		masked_pred = embedded_pred * mask
+		masked_target = embedded_target * mask
+
+		# Semantic similarity loss calculation
+		cosine_sims = (1 + F.cosine_similarity(masked_pred, masked_target, dim=2)) / 2
+
+		# Calculate the mean only over non-padding elements
+		# valid_tokens = mask.sum(dim=[1, 2]) / embedded_pred.size(2)  # Normalize by emb_dim to count tokens, not elements
+		semantic_loss = cosine_sims.sum(dim=1).mean() # Normalize by number of valid tokens and average batch
+
+		return semantic_loss
+
+	def get_losses(self, output_logits: FloatTensor, target_tokens: LongTensor, embedded_pred: None | FloatTensor, embedded_target: None | FloatTensor) -> tuple[FloatTensor, float, float]:
 		"""
 		Parameters:
 		- output_logits (Tensor): The logits from the model's output [batch_size*seq_len, vocab_size].
@@ -58,29 +78,10 @@ class CrossSimilarityLoss():
 		Returns:
 		- loss (Tensor): The calculated loss.
 		"""
-		ce_loss = self.cross_entropy_loss(output_logits, target_tokens) # Cross entropy loss calculation
-		if embedded_pred is None and embedded_target is None and self.include_ccs_loss:
-			return ce_loss
+		cce_loss = self.cross_entropy_loss(output_logits, target_tokens)
+		if embedded_pred is None and embedded_target is None and self.include_cs_loss:
+			return cce_loss
 
-		# Permute dimensions of embedded_pred and embedded_target to [batch_size, seq_len, emb_dim]
-		# embedded_pred = embedded_pred.permute(1, 0, 2)
-		# embedded_target = embedded_target.permute(1, 0, 2)
-
-		# Create a mask for padding tokens
-		mask = (target_tokens.view(embedded_pred.shape[0], embedded_pred.shape[1]) != self.pad_idx).unsqueeze(-1)  # Shape [batch_size, seq_len, 1]
-		# Expand the mask to the embedding dimension
-		mask = mask.expand(-1, -1, embedded_pred.size(-1))	# Expand to [batch_size, seq_len, emb_dim]
-
-		# Apply mask to embeddings
-		masked_pred = embedded_pred * mask
-		masked_target = embedded_target * mask
-
-		# Semantic similarity loss calculation
-		cosine_sims = F.cosine_similarity(masked_pred, masked_target, dim=2)
-		#semantic_loss = 1 - cosine_sim.mean()	# Average over sequence and batch
-		# Calculate the mean only over non-padding elements
-		valid_tokens = mask.float().sum(dim=[1, 2]) / embedded_pred.size(2)  # Normalize by emb_dim to count tokens, not elements
-		semantic_loss = 1 - (cosine_sims.sum(dim=1) / valid_tokens).mean()	# Normalize by number of valid tokens and average over sequence and batch
-
-		loss = (1 - self.varkappa) * ce_loss + self.varkappa * semantic_loss # Weighted sum of the cross-entropy and semantic similarity losses
-		return loss
+		semantic_loss = self.cosine_similarity_loss(target_tokens, embedded_pred, embedded_target)
+		loss = (1 - self.varkappa) * cce_loss + self.varkappa * semantic_loss 
+		return loss, cce_loss.item(), semantic_loss.item()

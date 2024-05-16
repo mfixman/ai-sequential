@@ -6,6 +6,7 @@ from scores import rouge_scores
 from collections import defaultdict
 from dataset import NewsDataset
 from torch import nn
+from torch.nn import functional as F
 from torch import tensor, FloatTensor, LongTensor
 from torch.utils.data import DataLoader
 from utils import collate_fn, collate_fn_v2, CrossSimilarityLoss
@@ -81,30 +82,31 @@ class TransformerV2(SuperTransformer):
 		# src_mask, trg_mask shape: [seq_len, seq_len]	---  src_padding_mask, trg_padding_mask shape: [batch_size, seq_len]
 		src_mask, trg_mask, src_padding_mask, trg_padding_mask = self.create_mask(src, trg)
 
-		# decoder_out shape: [batch_size, seq_len, emb_dim]
-		decoder_out_0 = self.transformer(embed_src, embed_trg, src_mask=src_mask, src_key_padding_mask=src_padding_mask, tgt_mask=trg_mask, tgt_key_padding_mask=trg_padding_mask)
-
-		memory = self.transformer.encoder(embed_src,
-											mask=src_mask, 
-											src_key_padding_mask=src_padding_mask, 
-											is_causal=False)
+		memory = self.transformer.encoder(
+			embed_src,
+			mask=src_mask, 
+			src_key_padding_mask=src_padding_mask, 
+			is_causal=False,
+		)
 		
-		decoder_out = self.transformer.decoder(embed_trg, 
-										 memory, 
-										 tgt_mask=trg_mask, 
-										 memory_mask=src_mask,
-										 tgt_key_padding_mask=trg_padding_mask,
-										 memory_key_padding_mask=src_padding_mask,
-										 tgt_is_causal=False, 
-										 memory_is_causal=False)
+		pred_decoder_out = self.transformer.decoder(
+			embed_trg, 
+			memory, 
+			tgt_mask=trg_mask, 
+			tgt_key_padding_mask=trg_padding_mask,
+			tgt_is_causal=False, 
+			memory_is_causal=False
+		)
 		
-		trg_decoder_out = self.transformer.decoder(embed_trg,
-											 memory)
+		trg_decoder_out = self.transformer.decoder(
+			embed_trg,
+			memory,
+			tgt_mask = None,
+			tgt_key_padding_mask = trg_padding_mask,
+			tgt_is_causal = False,
+			memory_is_causal = False,
+		)
 		
-		print(torch.nn.CosineSimilarity(decoder_out_0, decoder_out))
-		print(f"{trg_decoder_out=}")
-		raise ValueError
-
 		# output shape [batch_size, seq_len, vocab_size]
-		output = self.fc_out(decoder_out)
-		return output, decoder_out, embed_trg
+		output = self.fc_out(pred_decoder_out)
+		return output, pred_decoder_out, trg_decoder_out

@@ -21,10 +21,10 @@ def parse_args():
 	parser.add_argument('--epochs', type = int, help = 'Amount of epochs to train from.')
 	parser.add_argument('--batch-size', type = int, help = 'Batch size.')
 	parser.add_argument('--learning-rate', type = float, help = 'Alpha of the model.')
-	parser.add_argument('--loss', type = str, default = 'CrossEntropy', help = 'Loss function')
 	parser.add_argument('--load-checkpoint', type = bool, default = False, help = 'Start loading a checkpoint.')
 	parser.add_argument('--log', type = bool, default = True, help = 'Log some data in Hyperion,')
 	parser.add_argument('--max-samples', type = int, help = 'Training samples to take data from.')
+	parser.add_argument('--varkappa', type = float, help = 'Weight of Cosine Similarity Loss against Categorical Cross Entropy Loss.')
 
 	parser.add_argument('--train-validation-set', action = 'store_true', help = 'Use the validation set as training set. This provides incorrect results, but speeds up training.')
 
