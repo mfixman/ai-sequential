@@ -26,6 +26,8 @@ def parse_args():
 	parser.add_argument('--log', type = bool, default = True, help = 'Log some data in Hyperion,')
 	parser.add_argument('--max-samples', type = int, help = 'Training samples to take data from.')
 
+	parser.add_argument('--train-validation-set', action = 'store_true', help = 'Use the validation set as training set. This provides incorrect results, but speeds up training.')
+
 	args = vars(parser.parse_args())
 	args = {k: v for k, v in args.items() if v is not None}
 
