@@ -92,7 +92,7 @@ class BERTformer(SuperTransformer):
 		# src_mask, trg_mask shape: [seq_len, seq_len]	---  src_padding_mask, trg_padding_mask shape: [batch_size, seq_len]
 		src_mask, trg_mask, src_padding_mask, trg_padding_mask = self.create_mask(src, trg)
 
-		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long)
+		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long).to(self.device)
 		
 		bert_output = self.bert(
 			inputs_embeds = embed_src,

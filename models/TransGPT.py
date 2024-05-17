@@ -103,7 +103,7 @@ class TransGPT(SuperTransformer):
 		)
 		print(f"{pred_decoder_out.shape=}")"""
 
-		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long)
+		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long).to(self.device)
 		gpt_output = self.gpt(
 			inputs_embeds=memory,
 			#attention_mask=trg_padding_mask,
