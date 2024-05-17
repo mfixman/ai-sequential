@@ -154,23 +154,24 @@ class Trainer:
 		logging.info('Starting training')
 		epoch_loss = 0.
 		sum_scores : dict[str, float] = defaultdict(lambda: 0.)
-		pred_dec_out = None
-		trg_dec_out = None
 
 		self.model.train()
 		for i, (src, trg, *rest) in enumerate(train_loader):
+			pred_dec_out = None
+			trg_dec_out = None
+
 			if i % 10 == 0:
 				logging.info(f'Parsing {i}/{len(train_loader)}')
 
-			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
+			self.optimizer.zero_grad()
 
+			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
 			output, *hiddens = self.model(src, trg, *rest)
 			if hiddens:
 				pred_dec_out, trg_dec_out = hiddens
 
 			trg = trg[:, 1:].reshape(-1) # Reshape to [batch_size*trg_len]
 			output = output.reshape(-1, output.shape[2]) # Reshape to [batch_size*trg_len, vocab_size]
-			self.optimizer.zero_grad()
 
 			loss, cce_loss, semantic_loss = criterion.get_losses(output, trg, pred_dec_out, trg_dec_out)
 			sum_scores['cce_loss'] += cce_loss
@@ -194,11 +195,12 @@ class Trainer:
 
 		epoch_loss = 0.
 		sum_scores : dict[str, float] = defaultdict(lambda: 0.)
-		pred_dec_out = None
-		trg_dec_out = None
 
 		self.model.eval()
 		for i, (src, trg, *rest) in enumerate(val_loader):
+			pred_dec_out = None
+			trg_dec_out = None
+
 			if i % 10 == 0:
 				logging.info(f'Parsing {i}/{len(val_loader)}')
 
