@@ -79,7 +79,7 @@ class Trainer:
 		val_loader = DataLoader(self.val_dataset, **loader_options)
 
 		# Optimizer
-		self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.train_settings['learning_rate'], betas=(0.9, 0.98), eps=1e-9)
+		self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.train_settings['learning_rate'], betas=(0.9, 0.98), eps=1e-9)
 
 		# Loading checkpoint
 		epoch_start = 0
