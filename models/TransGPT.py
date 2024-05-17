@@ -11,17 +11,17 @@ from torch import tensor, FloatTensor, LongTensor
 from torch.utils.data import DataLoader
 from utils import collate_fn, collate_fn_v2, CrossSimilarityLoss
 from wandb import Artifact
-from transformers import BertModel
+from transformers import GPT2Model
 
 from models.SuperTransformer import SuperTransformer
 
-class BERTformer(SuperTransformer):
+class TransGPT(SuperTransformer):
 	def __init__(self, input_dim, output_dim, pad_idx, model_settings):
 		super().__init__()
-		self.emb_size = 768  # bert hidden dim
+		self.emb_size = 768
 
-		self.bert = BertModel.from_pretrained('bert-base-uncased')
-		for param in self.bert.parameters():
+		self.gpt = GPT2Model.from_pretrained("openai-community/gpt2")
+		for param in self.gpt.parameters():
 			param.requires_grad = False
 
 		self.src_word_embedding = nn.Embedding(output_dim, self.emb_size, padding_idx=pad_idx)
@@ -43,15 +43,9 @@ class BERTformer(SuperTransformer):
 		self.pad_idx = pad_idx
 
 	def forward(self, src, trg, *rest):
-		src = src[:, :512] # Trim src if exceed 512 (bert restriction)
-
 		self.device = src.device
 
 		tf_src, tf_trg, idf_src, idf_trg = rest
-
-		# Truncate tf_src and idf_src
-		tf_src = tf_src[:, :512]
-		idf_src = idf_src[:, :512]
 
 		# Remove <EOS> token from targets.
 		trg = trg[:, :-1]
@@ -86,22 +80,20 @@ class BERTformer(SuperTransformer):
 		embed_src += embed_idf_src
 		embed_trg += embed_idf_trg
 
-		# embed_trg shape: [batch_size, seq_len, emb_dim]
+		# embed_src, embed_trg shape: [batch_size, seq_len, emb_dim]
 
 		# Create masks
 		# src_mask, trg_mask shape: [seq_len, seq_len]	---  src_padding_mask, trg_padding_mask shape: [batch_size, seq_len]
 		src_mask, trg_mask, src_padding_mask, trg_padding_mask = self.create_mask(src, trg)
 
-		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long)
-		
-		bert_output = self.bert(
-			inputs_embeds = embed_src,
-			attention_mask = src_padding_mask,
-			token_type_ids = token_type_ids
+		memory = self.transformer.encoder(
+			embed_src,
+			mask=src_mask, 
+			src_key_padding_mask=src_padding_mask, 
+			is_causal=False,
 		)
-		memory = bert_output.last_hidden_state
 		
-		pred_decoder_out = self.transformer.decoder(
+		"""pred_decoder_out = self.transformer.decoder(
 			embed_trg, 
 			memory, 
 			tgt_mask=trg_mask, 
@@ -109,16 +101,28 @@ class BERTformer(SuperTransformer):
 			tgt_is_causal=False, 
 			memory_is_causal=False
 		)
+		print(f"{pred_decoder_out.shape=}")"""
+
+		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long)
+		gpt_output = self.gpt(
+			inputs_embeds=memory,
+			#attention_mask=trg_padding_mask,
+			token_type_ids = token_type_ids
+		)
+		output = gpt_output.last_hidden_state
+		print(f"{output.shape=}")
 		
-		trg_decoder_out = self.transformer.decoder(
+		"""trg_decoder_out = self.transformer.decoder(
 			embed_trg,
 			memory,
 			tgt_mask = None,
 			tgt_key_padding_mask = trg_padding_mask,
 			tgt_is_causal = False,
 			memory_is_causal = False,
-		)
+		)"""
+
+		output = output[:, :trg_seq_length, :]
 		
 		# output shape [batch_size, seq_len, vocab_size]
-		output = self.fc_out(pred_decoder_out)
-		return output, pred_decoder_out, trg_decoder_out
+		output = self.fc_out(output)
+		return output, None, None

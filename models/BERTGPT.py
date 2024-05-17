@@ -11,17 +11,21 @@ from torch import tensor, FloatTensor, LongTensor
 from torch.utils.data import DataLoader
 from utils import collate_fn, collate_fn_v2, CrossSimilarityLoss
 from wandb import Artifact
-from transformers import BertModel
+from transformers import BertModel, GPT2Model
 
 from models.SuperTransformer import SuperTransformer
 
-class BERTformer(SuperTransformer):
+class BERTGPT(SuperTransformer):
 	def __init__(self, input_dim, output_dim, pad_idx, model_settings):
 		super().__init__()
 		self.emb_size = 768  # bert hidden dim
 
 		self.bert = BertModel.from_pretrained('bert-base-uncased')
 		for param in self.bert.parameters():
+			param.requires_grad = False
+		
+		self.gpt = GPT2Model.from_pretrained("openai-community/gpt2")
+		for param in self.gpt.parameters():
 			param.requires_grad = False
 
 		self.src_word_embedding = nn.Embedding(output_dim, self.emb_size, padding_idx=pad_idx)
@@ -101,24 +105,14 @@ class BERTformer(SuperTransformer):
 		)
 		memory = bert_output.last_hidden_state
 		
-		pred_decoder_out = self.transformer.decoder(
-			embed_trg, 
-			memory, 
-			tgt_mask=trg_mask, 
-			tgt_key_padding_mask=trg_padding_mask,
-			tgt_is_causal=False, 
-			memory_is_causal=False
+		gpt_output = self.gpt(
+			inputs_embeds=memory,
+			#attention_mask=trg_padding_mask,
+			token_type_ids = token_type_ids
 		)
-		
-		trg_decoder_out = self.transformer.decoder(
-			embed_trg,
-			memory,
-			tgt_mask = None,
-			tgt_key_padding_mask = trg_padding_mask,
-			tgt_is_causal = False,
-			memory_is_causal = False,
-		)
-		
+		output = gpt_output.last_hidden_state
+
+		output = output[:, :trg_seq_length, :]
 		# output shape [batch_size, seq_len, vocab_size]
-		output = self.fc_out(pred_decoder_out)
-		return output, pred_decoder_out, trg_decoder_out
+		output = self.fc_out(output)
+		return output, None, None

@@ -3,7 +3,7 @@ data_settings:
     vocabulary_path: 'tokenized_data_subword_v2/vocabulary.pickle'
     special_tokens: ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']
 model_params:
-    model_name: 'transformer'
+    model_name: 'bertgpt'
     version: '2'
     encoder_embedding_dim: 512
     decoder_embedding_dim: 512
@@ -17,7 +17,7 @@ train:
     varkappa: 0
     checkpoint_folder: 'checkpoints'
     load_checkpoint : False
-    log: True
+    log: False
     max_samples: 10
 infer:
     batch_size: 1
