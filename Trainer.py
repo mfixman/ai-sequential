@@ -14,6 +14,7 @@ from transformers import AutoTokenizer
 from models.Seq2SeqV1 import Seq2SeqV1
 from models.TransformerV1 import TransformerV1
 from models.TransformerV2 import TransformerV2
+from models.BERTformer import BERTformer
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -63,6 +64,8 @@ class Trainer:
 			self.model = TransformerV1(input_dim, output_dim, pad_idx, model_settings).to(device)
 		elif self.model_settings['version'] == '2' and self.model_settings['model_name'] == 'transformer':
 			self.model = TransformerV2(input_dim, output_dim, pad_idx, model_settings).to(device)
+		elif self.model_settings['version'] == '2' and self.model_settings['model_name'] == 'bertformer':
+			self.model = BERTformer(input_dim, output_dim, pad_idx, model_settings).to(device)
 		else:
 			raise ValueError(f"Unknown version and model {self.model_settings['version']} {self.model_settings['model_name']}")
 
@@ -71,9 +74,7 @@ class Trainer:
 			batch_size=self.train_settings['batch_size'],
 			shuffle=True,
 			num_workers=2,
-			collate_fn=self.collate_fn,
-			pin_memory = True,
-			pin_memory_device = device,
+			collate_fn=self.collate_fn
 		)
 		train_loader = DataLoader(self.train_dataset, **loader_options)
 		val_loader = DataLoader(self.val_dataset, **loader_options)
