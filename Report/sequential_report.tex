@@ -188,9 +188,11 @@ By incorporating semantic similarity, we aim to generate summaries that better c
 
 \subsection{Reflections}
 \paragraph{Period (".") token}
-During our experimentation we noticed that using a model without the period (".") token, would make the source news very confusing, without capturing the differences between sentences. This would be reflected in the summarisations where, even in the target samples, two unrelated tokens were one after the other.
+During our experimentation, we observed that omitting the period (".") token from the model resulted in significant confusion in the source news, as it failed to distinguish between sentences effectively. This issue was evident in the summaries, where unrelated tokens often appeared consecutively.
 
-Therefore, we decided to inlcude the period (".") token in our dataset. This will effectively split the senteces of the sequences. However, this might not be the best approach since this token will be very important across all teh dataset especiallt for TF adn IDF tokens.
+Consequently, we decided to include the period (".") token in our dataset to better delineate sentences within the sequences. This inclusion aims to improve the clarity and coherence of the generated summaries. However, this approach has a potential drawback, as the period token becomes disproportionately important throughout the dataset, particularly influencing Term Frequency (TF) and Inverse Document Frequency (IDF) metrics.
+
+For future work, we recommend that the TF and IDF metrics should not be calculated for the period token. Alternatively, the end-of-sequence token could be employed to mark sentence boundaries, which might offer a more effective solution.
 
 \clearpage{}
 
