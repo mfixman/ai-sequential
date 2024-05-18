@@ -1,11 +1,23 @@
 \section{Results}
 
-\subsection{Seq2Seq Model}
+\subsection{Seq2Seq and Transformer models}
+Both the Seq2Seq and Transformer models seem to train slowly due to the large amount of data provided.
 
-\subsection{Transformer Model}
-Our transformer model runs faster than our Seq2Seq model and produces a better result in both Rouge metrics.
+While we were not able to train many epochs due to technical reasons, this didn't seem to be necessary as both models have a minimal loss at epochs 11 and 14, respectively.
 
 \begin{figure}[h]
-	\includegraphics[width = \textwidth]{transformer_loss.png}
-	\includegraphics[width = \textwidth]{transformer_rouge.png}
+	\includegraphics[width = \textwidth]{baseline_losses.png}
+	\caption{Training and validation losses of both initial models. Due to early stopping, only the non-transparent part is considered.}
 \end{figure}
+
+While the categorical cross-entropy loss of these models seems similar, their ROUGE scores tell another story.
+\Cref{baseline_rouges} contains the ROUGE1 and ROUGE2 scores of both models, where the transformer produces a considerably better score.
+
+\begin{figure}[h]
+	\includegraphics[width = \textwidth]{baseline_rouges.png}
+	\caption{ROUGE scores of the Seq2Seq and Transformer models. The attention mechanism allows the transformer model to create more coherent result with higher ROUGE scores.}
+	\label{baseline_rouges}
+\end{figure}
+
+Are these relatively good ROUGE scores good for having reasonable results?
+The answer is a resounding \textbf{no}.

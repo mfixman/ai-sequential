@@ -82,7 +82,6 @@ We can use the embeddings to estimate how close each predicted word to the real 
 \begin{equation}
 	\mathcal{L}_\text{CS} = 1 - \frac{1}{N} \sum_{n=1}^{N} \sum^W_{w = 1} \frac{\mathbf{x}_{n,w} \cdot \mathbf{y}_{n,w}}{\|\mathbf{x}_{n,w}\| \|\mathbf{y}_{n, w}\|}	
 \end{equation}
-\end{equation}
 
 This loss function would help us reach a result that's meaningful rather than identical to the target, as in the CCE loss.
 
