@@ -33,7 +33,7 @@ To replicate the environment and run the code follow these steps (**Warning**: a
     python dataset_tokenizer.py
     ```
 
-        The script will tokenize and preprocess the CNN/Daily Mail dataset from HuggingFace.
+    The script will tokenize and preprocess the CNN/Daily Mail dataset from HuggingFace.
 
 2. Train the models
 
