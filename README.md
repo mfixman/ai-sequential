@@ -29,9 +29,9 @@ To replicate the environment and run the code follow these steps (**Warning**: a
 1. Dataset
 
     To create the .pickle files use from the dataset class. Run the 'dataset_tokenizer.py' file:
-        ```bash
-            python dataset_tokenizer.py
-        ```
+    ```bash
+    python dataset_tokenizer.py
+    ```
 
         The script will tokenize and preprocess the CNN/Daily Mail dataset from HuggingFace.
 
@@ -39,7 +39,7 @@ To replicate the environment and run the code follow these steps (**Warning**: a
 
     To train the model, run:
     ```bash
-        python train.py
+    python train.py
     ```
     
     To specify the parameters you can either:
@@ -80,7 +80,7 @@ To replicate the environment and run the code follow these steps (**Warning**: a
 
             For example:
             ```bash
-                python train.py --model_name transformer --max_samples 10
+            python train.py --model_name transformer --max_samples 10
             ```
 
 3. Inference
