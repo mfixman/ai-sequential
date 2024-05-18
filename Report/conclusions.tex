@@ -1,0 +1,16 @@
+\section{Conclusions}
+\paragraph{COmment To be changed!}Fine.tuning BERT and GPT models could help improving teh performance by adapting teh mdoels to the abstarctive text sumamrization task - This requires a lot of computational resources and time!!!
+
+\section{Reflections}
+\paragraph{Period (".") token}
+During our experimentation, we observed that omitting the period (".") token from the model resulted in significant confusion in the source news, as it failed to distinguish between sentences effectively. This issue was evident in the summaries, where unrelated tokens often appeared consecutively.
+
+Consequently, we decided to include the period (".") token in our dataset to better delineate sentences within the sequences. This inclusion aims to improve the clarity and coherence of the generated summaries. However, this approach has a potential drawback, as the period token becomes disproportionately important throughout the dataset, particularly influencing Term Frequency (TF) and Inverse Document Frequency (IDF) metrics.
+
+For future work, we recommend that the TF and IDF metrics should not be calculated for the period token. Alternatively, the end-of-sequence token could be employed to mark sentence boundaries, which might offer a more effective solution.
+
+\paragraph{NER embedding}
+An important future direction for enhancing our model involves the integration of a Named Entity Recognition (NER) model in the preprocessing step of the dataset. The NER model would extract information about the entities present in the dataset, which would then be embedded alongside the contextual output of the encoder. This additional layer of information aims to provide the model with a deeper understanding of the entities involved in the news articles, potentially improving the accuracy and relevance of the generated summaries. 
+
+Specifically, we plan to utilize the pre-trained BERT-base-NER model \citep{BERT-NER}, which has been trained to recognize four types of entities: locations (LOC), organizations (ORG), persons (PER), and miscellaneous entities (MISC). 
+
