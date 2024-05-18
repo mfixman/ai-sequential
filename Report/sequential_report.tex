@@ -1,26 +1,32 @@
-\documentclass[a4papers, 11pt]{article}
+\documentclass[a4paper, 11pt]{article}
+
+\usepackage{adjustbox}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage[labelfont=bf,font=footnotesize]{caption}
+\usepackage{dirtytalk}
+\usepackage[symbol]{footmisc}
 \usepackage{geometry}
 \usepackage{graphicx}
-\usepackage{dirtytalk}
+% \usepackage{natbib}
+\usepackage{parskip}
 \usepackage{physics}
-\usepackage{amssymb}
-\usepackage{amsmath}
-\usepackage{hyperref}
-\usepackage{booktabs} % For better looking tables
-\usepackage{caption}  % For more advanced caption options
-\usepackage{natbib} % allows to use bibtex in harvard format
-\usepackage{tikz}
-\usetikzlibrary{shapes.geometric}
-\usepackage{adjustbox}
-% Define a command to simplify the zero entries
-\newcommand{\z}{\makebox[1em]{0}}
+\usepackage[obeyspaces]{xurl}
+
+\usepackage[hypertexnames=false,hidelinks]{hyperref}
+\usepackage[noabbrev,nameinlink,capitalize,poorman]{cleveref}
+
+% \setcitestyle{square}
+\bibliographystyle{plain}
 
 \begin{document}
 \begin{titlepage}
     \begin{minipage}{0.5\textwidth}
         \vspace{-2cm}
         \hspace{-1cm}
-        \includegraphics[width=1\textwidth]{uni_logo_city_london_1280_510-768x306.jpg}
+        \includegraphics[width=1\textwidth]{uni_logo.jpg}
     \end{minipage}
     \begin{center}
         \vspace{6cm}
@@ -52,15 +58,15 @@
 
 \subsection{Dataset and Preprocessing}
 
-For this project, we used the CNN/Daily Mail dataset, a renowned benchmark dataset for abstractive text summarization. The dataset contains news articles and their corresponding highlights, which serve as the ground truth summaries. We utilized the 3.0.0 version of the dataset from the \textit{Hugging Face} datasets library \citep{huggingface_cnn_dailymail}. 
+For this project, we used the CNN/Daily Mail dataset, a renowned benchmark dataset for abstractive text summarization. The dataset contains news articles and their corresponding highlights, which serve as the ground truth summaries. We utilized the 3.0.0 version of the dataset from the \textit{Hugging Face} datasets library\cite{huggingface_cnn_dailymail}.
 
-The preprocessing pipeline included several steps to prepare the data for model training. Firstly, we tokenized the text using the pre-trained BERT subword tokenizer from the HuggingFace \textit{transformers} library \citep{BERTtokenizer}. Additionally, we computed Term Frequency (TF) and Inverse Document Frequency (IDF) metrics for the dataset \citep{nallapati2016abstractive}, which were later incorporated into one of our transformer models. 
+The preprocessing pipeline included several steps to prepare the data for model training. Firstly, we tokenized the text using the pre-trained BERT subword tokenizer from the HuggingFace \textit{transformers} library\cite{BERTtokenizer}. Additionally, we computed Term Frequency (TF) and Inverse Document Frequency (IDF) metrics for the dataset\cite{nallapati2016abstractive}, which were later incorporated into one of our transformer models.
 
 The dataset is split into training, validation, and test sets. During preprocessing, stop words and punctuation were removed\footnote{We have chosen to retain the period (".") as a valid token to ensure that the model recognizes the segmentation of news into distinct sentences.}, and the vocabulary was updated accordingly, reaching a size of 30522 tokens. The tokenized and cleaned text data, along with the TF and IDF values, were saved for further use in training the models.
 
 \subsection{Seq2Seq Model}
 
-We initially implemented a Seq2Seq model \citep{sutskever2014sequence} using an encoder-decoder architecture with Long Short-Term Memory (LSTM) layers \citep{lstm}. 
+We initially implemented a Seq2Seq model\cite{sutskever2014sequence} using an encoder-decoder architecture with Long Short-Term Memory (LSTM) layers\cite{lstm}.
 
 The Seq2Seq model processes an input sequence and generates an output sequence, predicting one token at a time in an autoregressive manner. The general functioning of the Seq2Seq model can be described as follows:
 
@@ -80,7 +86,7 @@ where \( \mathbf{e}_t' \) is the embedding of the previous output token \( y_{t-
 
 \subsubsection{Bahdanau Attention}
 
-As an improvement to the basic Seq2Seq model, we incorporated Bahdanau Attention \citep{bahdanau2014neural} only in the decoder. This attention mechanism allows the model to focus on relevant parts of the input sequence at each decoding step, improving the quality of the generated summaries.
+As an improvement to the basic Seq2Seq model, we incorporated Bahdanau Attention\cite{bahdanau2014neural} only in the decoder. This attention mechanism allows the model to focus on relevant parts of the input sequence at each decoding step, improving the quality of the generated summaries.
 
 The Bahdanau attention weights can be formulated as:
 \begin{equation}
@@ -107,7 +113,7 @@ The Seq2Seq model with Bahdanau attention was trained using top-10 sampling and 
 
 \subsection{Transformer Model}
 
-The Transformer model \citep{vaswani2017attention}, implemented using PyTorch's \textit{nn.Transformer} class \citep{transformer}, is another architecture usually employed for abstractive text summarization. Unlike the Seq2Seq model, the Transformer relies on self-attention mechanisms to process the entire input sequence simultaneously, allowing for more parallelization and efficient training.
+The Transformer model\cite{vaswani2017attention}, implemented using PyTorch's \textit{nn.Transformer} class\cite{transformer}, is another architecture usually employed for abstractive text summarization. Unlike the Seq2Seq model, the Transformer relies on self-attention mechanisms to process the entire input sequence simultaneously, allowing for more parallelization and efficient training.
 
 \subsubsection{Self-Attention Mechanism}
 
@@ -141,7 +147,7 @@ The positional encoding for a position \(pos\) and dimension \(i\) is defined as
         &PE_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{2i/d}}\right)
         \\\\
         &PE_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{2i/d}}\right)
-    \end{split}    
+    \end{split}
 \end{equation}
 where \(d\) is the dimensionality of the embeddings. These positional encodings are added to the input embeddings to inject positional information.
 
@@ -156,7 +162,7 @@ The TF metric, which measures how frequently a term occurs in a document, is def
     \text{TF($t$)} = \frac{\text{Number of times term $t$ appears in a document}}{\text{Total number of terms in the document}}
 \end{equation}
 
-The IDF metric reflects how important a term is: 
+The IDF metric reflects how important a term is:
 \begin{equation}
     \text{IDF($t$)} = \log \frac{\text{Total number of documents}}{\text{Number of documents with term $t$ in it}}
 \end{equation}
@@ -168,13 +174,13 @@ The inclusion of TF and IDF embeddings aimed to provide the model with additiona
 \subsection{Cross Similarity Loss Function}
 The primary objective of our abstractive text summarization task is to generate summaries that are not only syntactically correct but also semantically meaningful. Traditional cross-entropy loss, which is commonly used for sequence-to-sequence models, primarily focuses on token-level accuracy by penalizing the incorrect predictions at each step. However, this approach does not account for the semantic similarity between the generated summary and the reference summary.
 
-To address this limitation, we propose a custom loss function, \textit{CrossSimilarityLoss}, which combines the traditional cross-entropy loss \citep{CrossEnrtopyLoss} with a semantic similarity loss, using a $\varkappa$ hyperparameter weight:
+To address this limitation, we propose a custom loss function, \textit{CrossSimilarityLoss}, which combines the traditional cross-entropy loss\cite{CrossEnrtopyLoss} with a semantic similarity loss, using a $\varkappa$ hyperparameter weight:
 
 \begin{equation}
     \mathcal{L} = (1 - \varkappa) \mathcal{L}_{\text{CE}} + \varkappa \mathcal{L}_{\text{semantic}}
 \end{equation}
 
-The semantic similarity loss is computed using cosine similarity \citep{cosineSimilarity} between the representation of the predicted and target sequences. These representation are collected from the output of the decoder of the transformer model. The cosine similarity is then averaged over the sequence and the batches.
+The semantic similarity loss is computed using cosine similarity\cite{cosineSimilarity} between the representation of the predicted and target sequences. These representation are collected from the output of the decoder of the transformer model. The cosine similarity is then averaged over the sequence and the batches.
 
 By incorporating semantic similarity, we aim to generate summaries that better capture the overall meaning and context of the source text, beyond mere token accuracy.
 
@@ -186,16 +192,9 @@ During our experimentation we noticed that using a model without the period ("."
 
 Therefore, we decided to inlcude the period (".") token in our dataset. This will effectively split the senteces of the sequences. However, this might not be the best approach since this token will be very important across all teh dataset especiallt for TF adn IDF tokens.
 
-\newpage
-\pagenumbering{gobble}
-\bibliographystyle{agsm}
-\bibliography{bibliography.bib}
+\clearpage{}
 
-
-\newpage
-\thispagestyle{empty}
-\appendix
-
+\bibliography{sequential_report.bib}
 
 \end{document}
 
