@@ -1,69 +1,49 @@
-\section{Methodology}
+\section{Models}
+\subsection{Baseline Model: Seq2Seq}
 
-\subsection{Data preprocessing}
+We initially implemented a Seq2Seq model\cite{sutskever2014sequence} using an encoder-decoder architecture with Long Short-Term Memory (LSTM) layers\cite{lstm}.
 
-\subsubsection{Punctuation and Stop Words}
+The Seq2Seq model processes an input sequence and generates an output sequence, predicting one token at a time in an autoregressive manner. The general functioning of the Seq2Seq model can be described as follows:
 
-Most punctuation is removed from the dataset, as it doesn't help in our objective of summarising a text.
-Periods \textsf{`\textbf{.}'} are retained, since they help separate between the many news in our input text.
-We also do not delete apostrophes \textsf{`\textbf{'}'}, as they are an integral part of the English language\cite{apostrophes}.
+\paragraph{Encoder:}
+The encoder takes an input sequence \( X = (x_1, x_2, \ldots, x_n) \) and processes it through multiple LSTM layers to produce a set of hidden states \( \mathbf{H} = (\mathbf{h}_1, \mathbf{h}_2, \ldots, \mathbf{h}_n) \). Before the LSTM layers, an embedding layer is used to convert the input tokens into dense vectors of a fixed size. The final hidden state and cell state of the encoder are passed to all the layers of the decoder as the initial states. The encoder's operations can be expressed as:
+\begin{equation}
+    \mathbf{e}_t = \text{Embedding}(x_t) \,\, \rightarrow \,\, \mathbf{h}_t = \text{LSTM}(\mathbf{e}_t, \mathbf{h}_{t-1})
+\end{equation}
+where \( \mathbf{e}_t \) is the embedding of the input token \( x_t \) and \( \mathbf{h}_t \) is the hidden state at time step \( t \).
 
-\subsubsection{Tokenisation}
+\paragraph{Decoder:}
+The decoder generates the output sequence \( Y = (y_1, y_2, \ldots, y_m) \) one token at a time. At each time step \( t \), the decoder takes the previous token \( y_{t-1} \), the previous hidden state, and the previous cell state as inputs, and produces the current token \( y_t \). An embedding layer is also used in the decoder to convert the input tokens into dense vectors before passing them to the LSTM layers. Initially, the decoder receives the start-of-sequence token \( \langle \text{sos} \rangle \) as the first input. The decoder's operations can be described as:
+\begin{equation}
+    \mathbf{e}_t' = \text{Embedding}(y_{t-1}) \,\, \rightarrow \,\, \mathbf{h}_t = \text{LSTM}(\mathbf{e}_t', \mathbf{h}_{t-1})
+\end{equation}
+where \( \mathbf{e}_t' \) is the embedding of the previous output token \( y_{t-1} \), \( \mathbf{h}_t \) is the hidden state at time step \( t \).
 
-For processing the data must be separated into tokens, which are later one-hot-encoded into the models (which include the embeddings).
+\subsubsection{Bahdanau Attention}
 
-This tokenisation is not trivial, since having too many words can unnecessarily produce high dimensionality in the embeddings which can make the model slower and more efficient.
-To prevent this we use the existing BERT subword tokeniser\cite{BERTtokenizer}.
+As an improvement to the basic Seq2Seq model, we incorporated Bahdanau Attention\cite{bahdanau2014neural} only in the decoder. This attention mechanism allows the model to focus on relevant parts of the input sequence at each decoding step, improving the quality of the generated summaries.
 
-\begin{figure}[h]
-	\newcommand{\hh}{\texttt{\#\#}}
-	\newcommand{\tokbox}[1]{\fbox{\strut\centering #1}}
-	\fbox{\parbox{\textwidth}{\small\sffamily the head of pakistan's ruling coalition announced thursday that the government will \\ move to impeach president pervez musharraf}} \\
-	\parbox[m][][t]{\textwidth}{\small \sffamily
-		 \tokbox{the}%
-		 \tokbox{head}%
-		 \tokbox{of}%
-		 \tokbox{pakistan}%
-		 \tokbox{'}%
-		 \tokbox{s}%
-		 \tokbox{ruling}%
-		 \tokbox{coalition}%
-		 \tokbox{announced}%
-		 \tokbox{thursday}%
-		 \tokbox{that}%
-		 \tokbox{the}%
-		 \tokbox{government}%
-		 \tokbox{will}
-		 \tokbox{move}%
-		 \tokbox{to}%
-		 \tokbox{imp}%
-		 \tokbox{\hh{}ea}%
-		 \tokbox{\hh{}ch}%
-		 \tokbox{president}%
-		 \tokbox{per}%
-		 \tokbox{\hh{}vez}%
-		 \tokbox{mu}%
-		 \tokbox{\hh{}sha}%
-		 \tokbox{\hh{}rra}%
-		 \tokbox{\hh{}f}
-	 }
-	\caption{Example of BERT tokeniser. Long words not in the dictionary, such as \textsf{``musharraf''}, get converted into several tokens that can be shared between words.}
-\end{figure}
+The Bahdanau attention weights can be formulated as:
+\begin{equation}
+    \alpha_{t,i} = \frac{\exp(e_{t,i})}{\sum_{j=1}^{T} \exp(e_{t,j})}
+\end{equation}
+where \( e_{t,i}\) are the attention scores based on the alignment between the decoder's hidden state and the encoder's output states:
+\begin{equation}
+    e_{t,i} = \mathbf{v}^T \tanh(\mathbf{W}_a \mathbf{h}_t + \mathbf{U}_a \mathbf{h}_i)
+\end{equation}
+where \( \mathbf{h}_t \) is the decoder's hidden state at time step \( t \), \( \mathbf{H} = \{\mathbf{h}_1, \mathbf{h}_2, \ldots, \mathbf{h}_T\} \) is the encoder's outputs, \( \mathbf{W}_a \) and \( \mathbf{U}_a \) are learnable weight matrices, and \( \mathbf{v} \) is a learnable parameter vector.
+The output of the attention layer is:
+\begin{equation}
+    \mathbf{h}'_t = \tanh(\mathbf{W}_c [\mathbf{c}_t ; \mathbf{h}_t])
+\end{equation}
+where \( \mathbf{W}_c \) is a learnable weight matrix and \( [\mathbf{c}_t ; \mathbf{h}_t] \) denotes the concatenation of the decoder's hidden state and the context vector:
+\begin{equation}
+    \mathbf{c}_t = \sum_{i=1}^{T} \alpha_{t,i} \mathbf{h}_i
+\end{equation}
 
-Each one of these tokens (including special tokens such as \texttt{<SOS>}) is transformer to a single integer from 0 to \num{30522}.
-The embedding layer, present in all our models, takes a one-hot-encoded vector with this number and returns a spacial embedding.
+The decoder uses this context vector \( \mathbf{c}_t \) along with its hidden states to generate the output tokens. This mechanism enhances the model's ability to focus on the most relevant parts of the input sequence during each step of the decoding process.
 
-\subsubsection{TF and IDF Metrics Embedding}
-
-All of our enhanced models compute Term Frequency (TF) and Inverse Document Frequency (IDF) metrics for the dataset\cite{nallapati2016abstractive}.
-These metrics measure how frequently a term occurs in a document, and how important this term is respectively.
-\begin{align}
-	\text{TF}(t) &= \frac{\text{Number of times term $t$ appears in a document}}{\text{Total number of terms in the document}} \\[1ex]
-	\text{IDF}(t) &= \log \left( \frac{\text{Total number of documents}}{\text{Number of documents with term $t$ in it}} \right)
-\end{align}
-
-The inclusion of these embeddings aimed to provide the model with additional information about the importance of words in the context of the entire dataset, potentially improving the quality of the generated summaries.
-This is in addition to \emph{positional encodings}, which are added later to the embeddings in transformer models.
+The Seq2Seq model with Bahdanau attention was trained using top-10 sampling and teacher forcing with an initial ratio of 0.5, which decreased by 0.0005 at every step. The teacher forcing ratio allows the model to gradually learn to generate sequences independently by reducing the dependency on the correct previous token over time.
 
 \subsection{Transformer Model}
 
@@ -119,6 +99,4 @@ To address this limitation, we propose a custom loss function, \textit{CrossSimi
 The semantic similarity loss is computed using cosine similarity\cite{cosineSimilarity} between the representation of the predicted and target sequences. These representation are collected from the output of the decoder of the transformer model. The cosine similarity is then averaged over the sequence and the batches.
 
 By incorporating semantic similarity, we aim to generate summaries that better capture the overall meaning and context of the source text, beyond mere token accuracy.
-
-\subsection{Metrics}
 
