@@ -47,6 +47,13 @@ class TransGPT(SuperTransformer):
 
 		tf_src, tf_trg, idf_src, idf_trg = rest
 
+		src = src[:, :1024]
+		trg = trg[:, :1024]
+		tf_src = tf_src[:, :1024]
+		tf_trg = tf_trg[:, :1024]
+		idf_src = idf_src[:, :1024]
+		idf_trg = idf_trg[:, :1024]
+
 		# Remove <EOS> token from targets.
 		trg = trg[:, :-1]
 		tf_trg = tf_trg[:, :-1]
@@ -93,18 +100,10 @@ class TransGPT(SuperTransformer):
 		)
 		
 		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long).to(self.device)
-		print(f'{memory.shape=}', flush = True)
-		print(f'{token_type_ids.shape=}', flush = True)
-		try:
-			gpt_output = self.gpt(
-				inputs_embeds=memory,
-				token_type_ids = token_type_ids
-			)
-		except:
-			print('It finished here', flush = True)
-			raise ValueError('asdf')
-
-		output = gpt_output.last_hidden_state
+		gpt_output = self.gpt(
+			inputs_embeds=memory,
+			token_type_ids = token_type_ids
+		)
 		
 		output = output[:, :trg_seq_length, :]
 		

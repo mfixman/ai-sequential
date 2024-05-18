@@ -65,6 +65,7 @@ class Trainer:
 
 		input_dim = len(self.train_dataset.vocabulary)
 		output_dim = len(self.train_dataset.vocabulary)
+		input_size_limit = None
 		pad_idx = self.train_dataset.vocabulary[self.data_settings['special_tokens'][0]]
 		if self.model_settings['version'] == '1' and self.model_settings['model_name'] == 'seq2seq':
 			self.model = Seq2SeqV1(input_dim, output_dim, pad_idx, model_settings).to(self.device)
