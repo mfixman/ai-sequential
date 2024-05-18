@@ -44,43 +44,43 @@ To replicate the environment and run the code follow these steps (**Warning**: a
     
     To specify the parameters you can either:
 
-        1. Change the 'model_params' and 'train' settings in the 'config.yaml' file.
+    1. Change the 'model_params' and 'train' settings in the 'config.yaml' file.
 
-            For example:
+        For example:
 
-            ```yaml
-            data_settings:
-                dataset_path: 'tokenized_data_subword_v2'
-                vocabulary_path: 'tokenized_data_subword_v2/vocabulary.pickle'
-                special_tokens: ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']
-            model_params:
-                model_name: 'transformer'
-                version: '2'
-                encoder_embedding_dim: 512
-                decoder_embedding_dim: 512
-                hidden_dim: 512
-                num_layers: 6
-                dropout: 0.2
-            train:
-                epochs: 5
-                batch_size: 2
-                learning_rate: 0.0001
-                varkappa: 0
-                checkpoint_folder: 'checkpoints'
-                load_checkpoint : False
-                log: False
-                max_samples: 10
-            infer:
-                batch_size: 1
-                checkpoint_folder: 'checkpoints'
-                load_checkpoint : True
-            ```
+        ```yaml
+        data_settings:
+            dataset_path: 'tokenized_data_subword_v2'
+            vocabulary_path: 'tokenized_data_subword_v2/vocabulary.pickle'
+            special_tokens: ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']
+        model_params:
+            model_name: 'transformer'
+            version: '2'
+            encoder_embedding_dim: 512
+            decoder_embedding_dim: 512
+            hidden_dim: 512
+            num_layers: 6
+            dropout: 0.2
+        train:
+            epochs: 5
+            batch_size: 2
+            learning_rate: 0.0001
+            varkappa: 0
+            checkpoint_folder: 'checkpoints'
+            load_checkpoint : False
+            log: False
+            max_samples: 10
+        infer:
+            batch_size: 1
+            checkpoint_folder: 'checkpoints'
+            load_checkpoint : True
+        ```
 
-        2. Use the parameters directly from the command line.
+    2. Use the parameters directly from the command line.
 
-            For example:
-            ```bash
-            python train.py --model_name transformer --max_samples 10
-            ```
+        For example:
+        ```bash
+        python train.py --model_name transformer --max_samples 10
+        ```
 
 3. Inference
