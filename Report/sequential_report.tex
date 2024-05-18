@@ -15,6 +15,9 @@
 \usepackage{physics}
 \usepackage[obeyspaces]{xurl}
 
+\usepackage[dvipsnames,table]{xcolor}
+\usepackage{textcomp}
+
 \usepackage[hypertexnames=false,hidelinks]{hyperref}
 \usepackage[noabbrev,nameinlink,capitalize,poorman]{cleveref}
 
@@ -143,11 +146,10 @@ Since the Transformer model lacks recurrence, it does not have a built-in sense 
 
 The positional encoding for a position \(pos\) and dimension \(i\) is defined as:
 \begin{equation}
-    \begin{split}
-        &PE_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{2i/d}}\right)
-        \\\\
-        &PE_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{2i/d}}\right)
-    \end{split}
+	\begin{aligned}
+		PE_{(pos, 2i)} &= \sin\left(\frac{pos}{10000^{2i/d}}\right) \\
+		PE_{(pos, 2i+1)} &= \cos\left(\frac{pos}{10000^{2i/d}}\right)
+	\end{aligned}
 \end{equation}
 where \(d\) is the dimensionality of the embeddings. These positional encodings are added to the input embeddings to inject positional information.
 
@@ -226,6 +228,12 @@ During our experimentation, we observed that omitting the period (".") token fro
 Consequently, we decided to include the period (".") token in our dataset to better delineate sentences within the sequences. This inclusion aims to improve the clarity and coherence of the generated summaries. However, this approach has a potential drawback, as the period token becomes disproportionately important throughout the dataset, particularly influencing Term Frequency (TF) and Inverse Document Frequency (IDF) metrics.
 
 For future work, we recommend that the TF and IDF metrics should not be calculated for the period token. Alternatively, the end-of-sequence token could be employed to mark sentence boundaries, which might offer a more effective solution.
+
+\clearpage{}
+\input{sweep.tex}
+
+\clearpage{}
+\input{results.tex}
 
 \clearpage{}
 
