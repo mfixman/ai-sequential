@@ -62,7 +62,6 @@ These metrics measure how frequently a term occurs in a document, and how import
 \end{align}
 
 The inclusion of these embeddings aimed to provide the model with additional information about the importance of words in the context of the entire dataset, potentially improving the quality of the generated summaries.
-This is in addition to \emph{positional encodings}, which are added later to the embeddings in transformer models.
 
 \subsection{Loss Function(s)}
 
@@ -77,6 +76,7 @@ This loss is calculated separately between each pair of words between the predic
 While it does predict how close the prediction is to exact value of the target, it does not separate between a slightly different and a completely unrelated word.
 
 \subsubsection{Cosine Similarity Loss}
+\label{cosine_similarity_loss}
 
 We can use the embeddings to estimate how close each predicted word to the real target\cite{cosineSimilarity}.
 \begin{equation}
@@ -85,7 +85,9 @@ We can use the embeddings to estimate how close each predicted word to the real 
 \end{equation}
 
 This loss function would help us reach a result that's meaningful rather than identical to the target, as in the CCE loss.
-However, since we are training the embeddings along with the rest of the models, we cannot use it alone as that would converge into embeddings always predicting the same space.
+
+However, when training embeddings as part of a larger model, relying solely on cosine similarity loss can be problematic since the loss is minimized when the embeddings of all words become very close to each other.
+This reduces the ability of the embeddings to capture distinct and meaningful differences between words, which might collapse of embeddings into a small region of the space can lead to poor generalization and a lack of discrimination between different words.
 
 \subsection{Combined Cross Similarity}
 We introduce \emph{Combined Cross Similarity Loss}, which combines both CCE and CS losses into a single category in a way that's controlled by a parameter $\varkappa$.
@@ -98,3 +100,24 @@ The ideal value, along with other components, will be found in a parameter sweep
 
 Unfortunately, the section in \cref{param_sweep_section} showed that having $\varkappa = 0$ produces a better result for low learning rate.
 This probably speaks of the strength of categorical cross-entropy as a loss.
+
+\subsection{Scoring Functions}
+\subsubsection{ROUGE-1 and ROUGE-2}
+To evaluate the performance of our models, we utilized the ROUGE (Recall-Oriented Understudy for Gisting Evaluation) metrics, which are the standard benchmark for abstractive text summarization tasks\cite{abstCNN}.
+
+Specifically, we calculated the ROUGE-1 and ROUGE-2 scores, which measure the overlap of unigrams and bigrams between the generated summaries and the reference summaries, respectively. These scores are calculated based on precision, recall, and F1-score:
+\begin{equation}
+    \begin{split}
+        &\text{Precision}_{\text{ROUGE-N}} = \frac{|\text{n-grams}_{\text{Prediction}} \cap \text{n-grams}_{\text{Target}}|}{|\text{n-grams}_{\text{Prediction}}|}
+        \\\\
+        &\text{Recall}_{\text{ROUGE-N}} = \frac{|\text{n-grams}_{\text{Prediction}} \cap \text{n-grams}_{\text{Target}}|}{|\text{n-grams}_{\text{Target}}|}
+        \\\\
+        &\text{ROUGE-N} = \text{F1}_{\text{ROUGE-N}} = \frac{2 \cdot \text{Precision}_{\text{ROUGE-N}} \cdot \text{Recall}_{\text{ROUGE-N}}}{\text{Precision}_{\text{ROUGE-N}} + \text{Recall}_{\text{ROUGE-N}}}
+    \end{split}
+\end{equation}
+
+In contrast to typical ROUGE implementations, which take text as input and tokenize it internally, we developed a custom approach to calculate the ROUGE metrics directly on the token indices.
+This method ensures that the evaluation is consistent with the tokenization scheme used during model training and inference, and that the results can be found quickly using GPU processing.
+
+\subsubsection{Cosine Similarity Score}
+In addition to the cosine similarity loss used in \cref{cosine_similarity_loss}, we use the cosine similarity as a scoring and comparing models.
