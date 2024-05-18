@@ -29,6 +29,8 @@ def parse_args():
 
 	parser.add_argument('--train-validation-set', action = 'store_true', help = 'Use the validation set as training set. This provides incorrect results, but speeds up training.')
 
+	parser.add_argument('--device', choices = ['cuda', 'cpu'], help = 'Device to use')
+
 	args = vars(parser.parse_args())
 	args = {k: v for k, v in args.items() if v is not None}
 
@@ -74,7 +76,7 @@ f"{model_setting['model_name']}_v{model_setting['version']}_lr={train_setting['l
 		logging.info(f'New settings for param sweep: {train_setting} {model_setting}')
 
 	torch.manual_seed(42)
-	trainer = Trainer(data_setting, model_setting, train_setting, logger)
+	trainer = Trainer(data_setting, model_setting, train_setting, logger, device = args.get('device', None))
 	trainer.train()
 
 if __name__ == '__main__':

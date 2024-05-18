@@ -83,7 +83,6 @@ class TransGPT(SuperTransformer):
 		# embed_src, embed_trg shape: [batch_size, seq_len, emb_dim]
 
 		# Create masks
-		# src_mask, trg_mask shape: [seq_len, seq_len]	---  src_padding_mask, trg_padding_mask shape: [batch_size, seq_len]
 		src_mask, trg_mask, src_padding_mask, trg_padding_mask = self.create_mask(src, trg)
 
 		memory = self.transformer.encoder(
@@ -93,34 +92,15 @@ class TransGPT(SuperTransformer):
 			is_causal=False,
 		)
 		
-		"""pred_decoder_out = self.transformer.decoder(
-			embed_trg, 
-			memory, 
-			tgt_mask=trg_mask, 
-			tgt_key_padding_mask=trg_padding_mask,
-			tgt_is_causal=False, 
-			memory_is_causal=False
-		)
-		print(f"{pred_decoder_out.shape=}")"""
-
 		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long).to(self.device)
+		print(f'{memory.shape=}')
+		print(f'{token_type_ids.shape=}')
 		gpt_output = self.gpt(
 			inputs_embeds=memory,
-			#attention_mask=trg_padding_mask,
 			token_type_ids = token_type_ids
 		)
 		output = gpt_output.last_hidden_state
-		print(f"{output.shape=}")
 		
-		"""trg_decoder_out = self.transformer.decoder(
-			embed_trg,
-			memory,
-			tgt_mask = None,
-			tgt_key_padding_mask = trg_padding_mask,
-			tgt_is_causal = False,
-			memory_is_causal = False,
-		)"""
-
 		output = output[:, :trg_seq_length, :]
 		
 		# output shape [batch_size, seq_len, vocab_size]

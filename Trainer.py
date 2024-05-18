@@ -18,10 +18,8 @@ from models.BERTformer import BERTformer
 from models.TransGPT import TransGPT
 from models.BERTGPT import BERTGPT
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
 class Trainer:
-	def __init__(self, data_settings, model_settings, train_settings, logger):
+	def __init__(self, data_settings, model_settings, train_settings, logger, device = None):
 		self.artifact_to_delete = None
 		self.data_settings = data_settings
 		self.model_settings = model_settings
@@ -50,6 +48,14 @@ class Trainer:
 			max_samples = self.train_settings['max_samples']
 		)
 
+		if device is None:
+			self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+		else:
+			self.device = device
+
+		if self.device == 'cpu':
+			logging.warn('Using CPU!')
+
 		if self.model_settings['version'] == '1':
 			self.collate_fn = collate_fn
 		elif self.model_settings['version'] == '2':
@@ -61,17 +67,17 @@ class Trainer:
 		output_dim = len(self.train_dataset.vocabulary)
 		pad_idx = self.train_dataset.vocabulary[self.data_settings['special_tokens'][0]]
 		if self.model_settings['version'] == '1' and self.model_settings['model_name'] == 'seq2seq':
-			self.model = Seq2SeqV1(input_dim, output_dim, pad_idx, model_settings).to(device)
+			self.model = Seq2SeqV1(input_dim, output_dim, pad_idx, model_settings).to(self.device)
 		elif self.model_settings['version'] == '1' and self.model_settings['model_name'] == 'transformer':
-			self.model = TransformerV1(input_dim, output_dim, pad_idx, model_settings).to(device)
+			self.model = TransformerV1(input_dim, output_dim, pad_idx, model_settings).to(self.device)
 		elif self.model_settings['version'] == '2' and self.model_settings['model_name'] == 'transformer':
-			self.model = TransformerV2(input_dim, output_dim, pad_idx, model_settings).to(device)
+			self.model = TransformerV2(input_dim, output_dim, pad_idx, model_settings).to(self.device)
 		elif self.model_settings['version'] == '2' and self.model_settings['model_name'] == 'bertformer':
-			self.model = BERTformer(input_dim, output_dim, pad_idx, model_settings).to(device)
+			self.model = BERTformer(input_dim, output_dim, pad_idx, model_settings).to(self.device)
 		elif self.model_settings['version'] == '2' and self.model_settings['model_name'] == 'transgpt':
-			self.model = TransGPT(input_dim, output_dim, pad_idx, model_settings).to(device)
+			self.model = TransGPT(input_dim, output_dim, pad_idx, model_settings).to(self.device)
 		elif self.model_settings['version'] == '2' and self.model_settings['model_name'] == 'bertgpt':
-			self.model = BERTGPT(input_dim, output_dim, pad_idx, model_settings).to(device)
+			self.model = BERTGPT(input_dim, output_dim, pad_idx, model_settings).to(self.device)
 		else:
 			raise ValueError(f"Unknown version and model {self.model_settings['version']} {self.model_settings['model_name']}")
 
@@ -91,7 +97,7 @@ class Trainer:
 		# Loading checkpoint
 		epoch_start = 0
 		if self.train_settings['load_checkpoint']:
-			ckpt = torch.load(f"{self.train_settings['checkpoint_folder']}/{self.model_settings['model_name']}_v{self.model_settings['version']}_ckt.pth", map_location=device)
+			ckpt = torch.load(f"{self.train_settings['checkpoint_folder']}/{self.model_settings['model_name']}_v{self.model_settings['version']}_ckt.pth", map_location=self.device)
 			model_weights = ckpt['model_weights']
 			self.model.load_state_dict(model_weights)
 			optimizer_state = ckpt['optimizer_state']
@@ -171,7 +177,7 @@ class Trainer:
 
 			self.optimizer.zero_grad()
 
-			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
+			src, trg, rest = src.to(self.device), trg.to(self.device), [r.to(self.device) for r in rest]
 			output, *hiddens = self.model(src, trg, *rest)
 			if hiddens:
 				pred_dec_out, trg_dec_out = hiddens
@@ -210,7 +216,7 @@ class Trainer:
 			if i % 10 == 0:
 				logging.info(f'Parsing {i}/{len(val_loader)}')
 
-			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
+			src, trg, rest = src.to(self.device), trg.to(self.device), [r.to(self.device) for r in rest]
 
 			output, *hiddens = self.model(src, trg, *rest)
 			if hiddens:
@@ -242,7 +248,7 @@ class Trainer:
 		self.model.eval()
 		examples = []
 		for i, (src, trg, *rest) in enumerate(val_loader):
-			src, trg, rest = src.to(device), trg.to(device), [r.to(device) for r in rest]
+			src, trg, rest = src.to(self.device), trg.to(self.device), [r.to(self.device) for r in rest]
 
 			output_logits, *scores = self.model(src, trg, *rest)
 			output = output_logits.argmax(dim = 2)
