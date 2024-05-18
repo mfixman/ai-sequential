@@ -3,13 +3,11 @@
 \subsection{Data preprocessing}
 
 \subsubsection{Punctuation and Stop Words}
-
 Most punctuation is removed from the dataset, as it doesn't help in our objective of summarising a text.
 Periods \textsf{`\textbf{.}'} are retained, since they help separate between the many news in our input text.
 We also do not delete apostrophes \textsf{`\textbf{'}'}, as they are an integral part of the English language\cite{apostrophes}.
 
 \subsubsection{Tokenisation}
-
 For processing the data must be separated into tokens, which are later one-hot-encoded into the models (which include the embeddings).
 
 This tokenisation is not trivial, since having too many words can unnecessarily produce high dimensionality in the embeddings which can make the model slower and more efficient.
@@ -18,8 +16,9 @@ To prevent this we use the existing BERT subword tokeniser\cite{BERTtokenizer}.
 \begin{figure}[h]
 	\newcommand{\hh}{\texttt{\#\#}}
 	\newcommand{\tokbox}[1]{\fbox{\strut\centering #1}}
-	\fbox{\parbox{\textwidth}{\small\sffamily the head of pakistan's ruling coalition announced thursday that the government will \\ move to impeach president pervez musharraf}} \\
-	\parbox[m][][t]{\textwidth}{\small \sffamily
+	\centering
+	\fbox{\parbox{\textwidth}{\fbox{\parbox{\textwidth - 13pt}{\small\sffamily the head of pakistan's ruling coalition announced thursday that the government will \\ move to impeach president pervez musharraf}}}} \\
+	\fbox{\parbox[m][][t]{\textwidth}{\small \sffamily
 		 \tokbox{the}%
 		 \tokbox{head}%
 		 \tokbox{of}%
@@ -46,7 +45,7 @@ To prevent this we use the existing BERT subword tokeniser\cite{BERTtokenizer}.
 		 \tokbox{\hh{}sha}%
 		 \tokbox{\hh{}rra}%
 		 \tokbox{\hh{}f}
-	 }
+	 }}
 	\caption{Example of BERT tokeniser. Long words not in the dictionary, such as \textsf{``musharraf''}, get converted into several tokens that can be shared between words.}
 \end{figure}
 
