@@ -95,10 +95,15 @@ class TransGPT(SuperTransformer):
 		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long).to(self.device)
 		print(f'{memory.shape=}', flush = True)
 		print(f'{token_type_ids.shape=}', flush = True)
-		gpt_output = self.gpt(
-			inputs_embeds=memory,
-			token_type_ids = token_type_ids
-		)
+		try:
+			gpt_output = self.gpt(
+				inputs_embeds=memory,
+				token_type_ids = token_type_ids
+			)
+		except:
+			print('It finished here', flush = True)
+			raise ValueError('asdf')
+
 		output = gpt_output.last_hidden_state
 		
 		output = output[:, :trg_seq_length, :]
