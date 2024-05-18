@@ -44,7 +44,7 @@ To replicate the environment and run the code follow these steps (**Warning**: a
     
     To specify the parameters you can either:
 
-        - Change the 'model_params' and 'train' settings in the 'config.yaml' file.
+        1. Change the 'model_params' and 'train' settings in the 'config.yaml' file.
 
             For example:
 
@@ -76,7 +76,7 @@ To replicate the environment and run the code follow these steps (**Warning**: a
                 load_checkpoint : True
             ```
 
-        - Use the parameters directly from the command line.
+        2. Use the parameters directly from the command line.
 
             For example:
             ```bash
