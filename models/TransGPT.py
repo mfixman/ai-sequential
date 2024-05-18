@@ -93,8 +93,8 @@ class TransGPT(SuperTransformer):
 		)
 		
 		token_type_ids = torch.zeros(N, src_seq_length, dtype=torch.long).to(self.device)
-		print(f'{memory.shape=}')
-		print(f'{token_type_ids.shape=}')
+		print(f'{memory.shape=}', flush = True)
+		print(f'{token_type_ids.shape=}', flush = True)
 		gpt_output = self.gpt(
 			inputs_embeds=memory,
 			token_type_ids = token_type_ids
