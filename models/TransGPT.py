@@ -105,7 +105,7 @@ class TransGPT(SuperTransformer):
 			token_type_ids = token_type_ids
 		)
 		
-		output = output[:, :trg_seq_length, :]
+		output = gpt_output[:, :trg_seq_length, :]
 		
 		# output shape [batch_size, seq_len, vocab_size]
 		output = self.fc_out(output)
