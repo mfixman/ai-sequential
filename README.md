@@ -30,7 +30,7 @@ To replicate the environment and run the code follow these steps (**Warning**: a
 
     To create the .pickle files use from the dataset class. Run the 'dataset_tokenizer.py' file:
         ```bash
-        python dataset_tokenizer.py
+            python dataset_tokenizer.py
         ```
 
         The script will tokenize and preprocess the CNN/Daily Mail dataset from HuggingFace.
