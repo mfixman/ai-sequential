@@ -1,0 +1,201 @@
+\documentclass[a4papers, 11pt]{article}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{dirtytalk}
+\usepackage{physics}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{booktabs} % For better looking tables
+\usepackage{caption}  % For more advanced caption options
+\usepackage{natbib} % allows to use bibtex in harvard format
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric}
+\usepackage{adjustbox}
+% Define a command to simplify the zero entries
+\newcommand{\z}{\makebox[1em]{0}}
+
+\begin{document}
+\begin{titlepage}
+    \begin{minipage}{0.5\textwidth}
+        \vspace{-2cm}
+        \hspace{-1cm}
+        \includegraphics[width=1\textwidth]{uni_logo_city_london_1280_510-768x306.jpg}
+    \end{minipage}
+    \begin{center}
+        \vspace{6cm}
+        \begin{minipage}{0.7\textwidth}
+        \centering
+        {\huge\bfseries Coursework \vspace{10pt}\\ Deep Learning for Sequence Analysis  \vspace{10pt} \\ INM706}\\[2ex]
+        \vspace{15pt}
+        {\LARGE Alessandro Abati \& Martin Fixman}\\[1ex]
+        {\large student IDs: 230040125 \& 230053494}\\[1ex]
+        {\Large \today}
+        \end{minipage}
+    \end{center}
+    \begin{center}
+        {\Large \href{https://github.com/mfixman/ai-sequential}{GitHub repository}}
+    \end{center}
+\end{titlepage}
+
+\newpage
+\thispagestyle{empty}
+\tableofcontents
+
+\newpage
+\thispagestyle{empty}
+\section*{Introduction}
+
+\newpage
+\setcounter{page}{1}
+\section{Methodology}
+
+\subsection{Dataset and Preprocessing}
+
+For this project, we used the CNN/Daily Mail dataset, a renowned benchmark dataset for abstractive text summarization. The dataset contains news articles and their corresponding highlights, which serve as the ground truth summaries. We utilized the 3.0.0 version of the dataset from the \textit{Hugging Face} datasets library \citep{huggingface_cnn_dailymail}. 
+
+The preprocessing pipeline included several steps to prepare the data for model training. Firstly, we tokenized the text using the pre-trained BERT subword tokenizer from the HuggingFace \textit{transformers} library \citep{BERTtokenizer}. Additionally, we computed Term Frequency (TF) and Inverse Document Frequency (IDF) metrics for the dataset \citep{nallapati2016abstractive}, which were later incorporated into one of our transformer models. 
+
+The dataset is split into training, validation, and test sets. During preprocessing, stop words and punctuation were removed\footnote{We have chosen to retain the period (".") as a valid token to ensure that the model recognizes the segmentation of news into distinct sentences.}, and the vocabulary was updated accordingly, reaching a size of 30522 tokens. The tokenized and cleaned text data, along with the TF and IDF values, were saved for further use in training the models.
+
+\subsection{Seq2Seq Model}
+
+We initially implemented a Seq2Seq model \citep{sutskever2014sequence} using an encoder-decoder architecture with Long Short-Term Memory (LSTM) layers \citep{lstm}. 
+
+The Seq2Seq model processes an input sequence and generates an output sequence, predicting one token at a time in an autoregressive manner. The general functioning of the Seq2Seq model can be described as follows:
+
+\paragraph{Encoder:}
+The encoder takes an input sequence \( X = (x_1, x_2, \ldots, x_n) \) and processes it through multiple LSTM layers to produce a set of hidden states \( \mathbf{H} = (\mathbf{h}_1, \mathbf{h}_2, \ldots, \mathbf{h}_n) \). Before the LSTM layers, an embedding layer is used to convert the input tokens into dense vectors of a fixed size. The final hidden state and cell state of the encoder are passed to all the layers of the decoder as the initial states. The encoder's operations can be expressed as:
+\begin{equation}
+    \mathbf{e}_t = \text{Embedding}(x_t) \,\, \rightarrow \,\, \mathbf{h}_t = \text{LSTM}(\mathbf{e}_t, \mathbf{h}_{t-1})
+\end{equation}
+where \( \mathbf{e}_t \) is the embedding of the input token \( x_t \) and \( \mathbf{h}_t \) is the hidden state at time step \( t \).
+
+\paragraph{Decoder:}
+The decoder generates the output sequence \( Y = (y_1, y_2, \ldots, y_m) \) one token at a time. At each time step \( t \), the decoder takes the previous token \( y_{t-1} \), the previous hidden state, and the previous cell state as inputs, and produces the current token \( y_t \). An embedding layer is also used in the decoder to convert the input tokens into dense vectors before passing them to the LSTM layers. Initially, the decoder receives the start-of-sequence token \( \langle \text{sos} \rangle \) as the first input. The decoder's operations can be described as:
+\begin{equation}
+    \mathbf{e}_t' = \text{Embedding}(y_{t-1}) \,\, \rightarrow \,\, \mathbf{h}_t = \text{LSTM}(\mathbf{e}_t', \mathbf{h}_{t-1})
+\end{equation}
+where \( \mathbf{e}_t' \) is the embedding of the previous output token \( y_{t-1} \), \( \mathbf{h}_t \) is the hidden state at time step \( t \).
+
+\subsubsection{Bahdanau Attention}
+
+As an improvement to the basic Seq2Seq model, we incorporated Bahdanau Attention \citep{bahdanau2014neural} only in the decoder. This attention mechanism allows the model to focus on relevant parts of the input sequence at each decoding step, improving the quality of the generated summaries.
+
+The Bahdanau attention weights can be formulated as:
+\begin{equation}
+    \alpha_{t,i} = \frac{\exp(e_{t,i})}{\sum_{j=1}^{T} \exp(e_{t,j})}
+\end{equation}
+where \( e_{t,i}\) are the attention scores based on the alignment between the decoder's hidden state and the encoder's output states:
+\begin{equation}
+    e_{t,i} = \mathbf{v}^T \tanh(\mathbf{W}_a \mathbf{h}_t + \mathbf{U}_a \mathbf{h}_i)
+\end{equation}
+where \( \mathbf{h}_t \) is the decoder's hidden state at time step \( t \), \( \mathbf{H} = \{\mathbf{h}_1, \mathbf{h}_2, \ldots, \mathbf{h}_T\} \) is the encoder's outputs, \( \mathbf{W}_a \) and \( \mathbf{U}_a \) are learnable weight matrices, and \( \mathbf{v} \) is a learnable parameter vector.
+The output of the attention layer is:
+\begin{equation}
+    \mathbf{h}'_t = \tanh(\mathbf{W}_c [\mathbf{c}_t ; \mathbf{h}_t])
+\end{equation}
+where \( \mathbf{W}_c \) is a learnable weight matrix and \( [\mathbf{c}_t ; \mathbf{h}_t] \) denotes the concatenation of the decoder's hidden state and the context vector:
+\begin{equation}
+    \mathbf{c}_t = \sum_{i=1}^{T} \alpha_{t,i} \mathbf{h}_i
+\end{equation}
+
+The decoder uses this context vector \( \mathbf{c}_t \) along with its hidden states to generate the output tokens. This mechanism enhances the model's ability to focus on the most relevant parts of the input sequence during each step of the decoding process.
+
+\paragraph{}
+The Seq2Seq model with Bahdanau attention was trained using top-10 sampling and teacher forcing with an initial ratio of 0.5, which decreased by 0.0005 at every step. The teacher forcing ratio allows the model to gradually learn to generate sequences independently by reducing the dependency on the correct previous token over time.
+
+\subsection{Transformer Model}
+
+The Transformer model \citep{vaswani2017attention}, implemented using PyTorch's \textit{nn.Transformer} class \citep{transformer}, is another architecture usually employed for abstractive text summarization. Unlike the Seq2Seq model, the Transformer relies on self-attention mechanisms to process the entire input sequence simultaneously, allowing for more parallelization and efficient training.
+
+\subsubsection{Self-Attention Mechanism}
+
+The self-attention mechanism is a key component of the Transformer model, allowing the model to weigh the importance of different tokens in the input sequence dynamically. The attention mechanism operates as follows:
+
+Given an input sequence \(\mathbf{X} \in \mathbb{R}^{n \times d}\), where \(n\) is the sequence length and \(d\) is the embedding dimension, we compute the Query (\(\mathbf{Q}\)), Key (\(\mathbf{K}\)), and Value (\(\mathbf{V}\)) matrices as:
+\begin{equation}
+     \mathbf{Q} = \mathbf{X}\mathbf{W^Q}, \quad \mathbf{K} = \mathbf{XW^K}, \quad \mathbf{V} = \mathbf{XW^V}
+\end{equation}
+where \(\mathbf{W^Q}, \mathbf{W^K}, \mathbf{W^V} \in \mathbb{R}^{d \times d_k}\) are learnable weight matrices.
+
+The attention scores are computed as:
+\begin{equation}
+    \text{Attention}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \text{softmax}\left(\frac{\mathbf{Q}\mathbf{K}^T}{\sqrt{d_k}}\right)\mathbf{V}
+\end{equation}
+where \(d_k\) is the dimensionality of the queries and keys.
+
+Multi-head attention extends this by allowing the model to jointly attend to information from different representation subspaces at different positions. This is achieved by concatenating the outputs of \(h\) attention heads:
+\begin{equation}
+    \text{MultiHead}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \text{Concat}(\text{head}_1, \ldots, \text{head}_h)\mathbf{W^O}
+\end{equation}
+where \(\text{head}_i = \text{Attention}(\mathbf{Q}\mathbf{W^Q}_i, \mathbf{K}\mathbf{W^K}_i, \mathbf{V}\mathbf{W^V}_i)\), and \(\mathbf{W^O} \in \mathbb{R}^{hd_k \times d}\).
+
+\subsubsection{Positional Encoding and Masking}
+
+Since the Transformer model lacks recurrence, it does not have a built-in sense of the order of words in a sequence. To address this, positional encodings are added to the input embeddings to provide information about the position of each token within the sequence.
+
+The positional encoding for a position \(pos\) and dimension \(i\) is defined as:
+\begin{equation}
+    \begin{split}
+        &PE_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{2i/d}}\right)
+        \\\\
+        &PE_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{2i/d}}\right)
+    \end{split}    
+\end{equation}
+where \(d\) is the dimensionality of the embeddings. These positional encodings are added to the input embeddings to inject positional information.
+
+Masking is also crucial in the Transformer architecture. We employed two types of masks: a padding mask to prevent the model from attending to padding tokens in the input and a target sequence mask to ensure that the model only attends to previous tokens in the target sequence during training.
+
+\subsubsection{TF and IDF Metrics Embedding}
+
+As an enhancement to the standard Transformer model, we developed a variant, Transformer V2, which incorporates Term Frequency (TF) and Inverse Document Frequency (IDF) metrics.
+
+The TF metric, which measures how frequently a term occurs in a document, is defined as:
+\begin{equation}
+    \text{TF($t$)} = \frac{\text{Number of times term $t$ appears in a document}}{\text{Total number of terms in the document}}
+\end{equation}
+
+The IDF metric reflects how important a term is: 
+\begin{equation}
+    \text{IDF($t$)} = \log \frac{\text{Total number of documents}}{\text{Number of documents with term $t$ in it}}
+\end{equation}
+
+These values were embedded and added to the input embeddings, along with the positional encodings.
+
+The inclusion of TF and IDF embeddings aimed to provide the model with additional information about the importance of words in the context of the entire dataset, potentially improving the quality of the generated summaries. The architecture and training process remained otherwise consistent with the standard Transformer model.
+
+\subsection{Cross Similarity Loss Function}
+The primary objective of our abstractive text summarization task is to generate summaries that are not only syntactically correct but also semantically meaningful. Traditional cross-entropy loss, which is commonly used for sequence-to-sequence models, primarily focuses on token-level accuracy by penalizing the incorrect predictions at each step. However, this approach does not account for the semantic similarity between the generated summary and the reference summary.
+
+To address this limitation, we propose a custom loss function, \textit{CrossSimilarityLoss}, which combines the traditional cross-entropy loss \citep{CrossEnrtopyLoss} with a semantic similarity loss, using a $\varkappa$ hyperparameter weight:
+
+\begin{equation}
+    \mathcal{L} = (1 - \varkappa) \mathcal{L}_{\text{CE}} + \varkappa \mathcal{L}_{\text{semantic}}
+\end{equation}
+
+The semantic similarity loss is computed using cosine similarity \citep{cosineSimilarity} between the representation of the predicted and target sequences. These representation are collected from the output of the decoder of the transformer model. The cosine similarity is then averaged over the sequence and the batches.
+
+By incorporating semantic similarity, we aim to generate summaries that better capture the overall meaning and context of the source text, beyond mere token accuracy.
+
+\subsection{Metrics}
+
+\subsection{Reflections}
+\paragraph{Period (".") token}
+During our experimentation we noticed that using a model without the period (".") token, would make the source news very confusing, without capturing the differences between sentences. This would be reflected in the summarisations where, even in the target samples, two unrelated tokens were one after the other.
+
+Therefore, we decided to inlcude the period (".") token in our dataset. This will effectively split the senteces of the sequences. However, this might not be the best approach since this token will be very important across all teh dataset especiallt for TF adn IDF tokens.
+
+\newpage
+\pagenumbering{gobble}
+\bibliographystyle{agsm}
+\bibliography{bibliography.bib}
+
+
+\newpage
+\thispagestyle{empty}
+\appendix
+
+
+\end{document}
+
