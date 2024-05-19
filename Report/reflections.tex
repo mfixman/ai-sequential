@@ -1,4 +1,4 @@
-\section{Reflections}
+\section{Reflections (Martin)}
 \label{reflections_section}
 
 This assessment looks like a complete failure.
@@ -36,6 +36,9 @@ However, here are some areas where we'd like to continue experimenting.
 		It's possible that using only 512 dimensions in the embedding was the reason for the bad performance of our models.
 	\item[Novel uses of masking]
 		Similar to how PEGASUS uses Gap-Sentence Generation masking\cite{pegasus_model}, we can train a model to generate missing sentences from a document, mimicking the summarisation task.
+	\item[Non-novel uses of cosine similarity score and loss]
+		Cosine Similarity Loss and Scores, introduced in \cref{cosine_similarity_loss,cosine_similarity_score}, did not average by word in an attempt to have better scores on shorter sequences.
+		This was likely a large mistake, as none of the results either using the loss or producing the score were reasonable.
 	\item[Using a GPT decoder]
 		Part of the original methodology of our work was creating a model with a transfomer encoder and a GPT decoder.
 		GPT generally provides more readable results and would be a good solution for our ``nonsensical output'' problem.
@@ -54,5 +57,4 @@ However, here are some areas where we'd like to continue experimenting.
 		It's possible that training on more data, even if it would have taken a huge amount of time, would have resulted in better results.
 \end{description}
 
-Ultimately, there is a lot of extra work to do.
-However, our existing models and training infrastructure should allow us to continue iterating into better and better models until we reach one that, besides having better metrics, produces good results.
+While there is a lot of extra work to do, our existing models and training infrastructure should allow us to continue iterating into better and better models until we reach one which, besides having better metrics, produces good results.

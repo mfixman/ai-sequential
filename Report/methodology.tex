@@ -66,6 +66,8 @@ The inclusion of these embeddings aimed to provide the model with additional inf
 
 \subsection{Loss Function(s)}
 
+All loss functions are added to al $L_1$ regularisation loss with $\lambda = 10^{-5}$.
+
 \subsubsection{Categorical Cross-Entropy Loss}
 
 Part of our loss function is the Categorical Cross-Entropy Loss\cite{cross_entropy_loss}, which achieves a smooth gradient function by calculating the loss with the logits of the result rather than the result itself.
@@ -109,19 +111,18 @@ To evaluate the performance of our models, we utilized the ROUGE (Recall-Oriente
 
 Specifically, we calculated the ROUGE-1 and ROUGE-2 scores, which measure the overlap of unigrams and bigrams between the generated summaries and the reference summaries, respectively. These scores are calculated based on precision, recall, and F1-score:
 \begin{equation}
-    \begin{split}
-        &\text{Precision}_{\text{ROUGE-N}} = \frac{|\text{n-grams}_{\text{Prediction}} \cap \text{n-grams}_{\text{Target}}|}{|\text{n-grams}_{\text{Prediction}}|}
-        \\\\
-        &\text{Recall}_{\text{ROUGE-N}} = \frac{|\text{n-grams}_{\text{Prediction}} \cap \text{n-grams}_{\text{Target}}|}{|\text{n-grams}_{\text{Target}}|}
-        \\\\
-        &\text{ROUGE-N} = \text{F1}_{\text{ROUGE-N}} = \frac{2 \cdot \text{Precision}_{\text{ROUGE-N}} \cdot \text{Recall}_{\text{ROUGE-N}}}{\text{Precision}_{\text{ROUGE-N}} + \text{Recall}_{\text{ROUGE-N}}}
-    \end{split}
+	\begin{aligned}
+		\text{Prec}^{\text{ROUGE-N}} &= \frac{\left|\text{N-grams}_{\text{Prediction}} \cap \text{N-grams}_{\text{Target}}\right|}{\left|\text{N-grams}_{\text{Prediction}}\right|} \\
+		\text{Rec}^{\text{ROUGE-N}} &= \frac{\left|\text{N-grams}_{\text{Prediction}} \cap \text{N-grams}_{\text{Target}}\right|}{\left|\text{N-grams}_{\text{Target}}\right|} \\[1em]
+		\text{ROUGE-N} = F_1^{\text{ROUGE-N}} &= \frac{2 \cdot \text{Prec}^{\text{ROUGE-N}} \cdot \text{Rec}^{\text{ROUGE-N}}}{\text{Prec}^{\text{ROUGE-N}} + \text{Rec}^{\text{ROUGE-N}}}
+	\end{aligned}
 \end{equation}
 
 In contrast to typical ROUGE implementations, which take text as input and tokenize it internally, we developed a custom approach to calculate the ROUGE metrics directly on the token indices.
 This method ensures that the evaluation is consistent with the tokenization scheme used during model training and inference, and that the results can be found quickly using GPU processing.
 
 \subsubsection{Cosine Similarity Score}
+\label{cosine_similarity_score}
 In addition to the cosine similarity loss used in \cref{cosine_similarity_loss}, we use the inverse of the cosine similarity loss as a scoring and comparing models.
 
 \subsection{Early Stopping}

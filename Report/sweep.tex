@@ -4,6 +4,7 @@
 In order to find the parameters for the two enhanced models that maximise some of our scores, we run a full parameter sweep on a subset of the samples with two parameters related to training.
 \begin{table}[h]
 	\centering
+	\small
 	\begin{tabular}{r | l l l}
 		\toprule
 			Parameter & \multicolumn{3}{|c}{Values} \\
@@ -12,6 +13,7 @@ In order to find the parameters for the two enhanced models that maximise some o
 			Cosine Similarity Weight ($\varkappa$) & 0 & 0.2 & 0.5 \\
 		\bottomrule
 	\end{tabular}
+	\caption{Parameters being swept.}
 \end{table}
 
 Each model is run for 15 epochs, since in our experiments that's enough for finding a trend in the metrics, and is judged in three of the metrics presented in \cref{scoring_section}: F1-score of Rouge1, F1-score of Rouge2, and cosine similarity score.
@@ -34,7 +36,7 @@ This is a bit surprising given the large amount of parameters the transformer, b
 Additionally, it's sadly clear that the best result at this learning rate happen when $\varkappa = 0$.
 While using cosine similarity loss as a fraction of the final loss seemed like a fine idea, it's likely that it adds extra instability to the gradient descent.
 
-\newpage{}
+% \newpage{}
 \subsection{BERTFormer}
 
 The results from the parameter sweep can be found in the three scatter plots in \cref{bertformer_sweep_results}.
