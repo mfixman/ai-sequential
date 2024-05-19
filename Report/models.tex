@@ -88,9 +88,13 @@ Masking is also crucial in the Transformer architecture. We employed two types o
 
 
 \subsection{BERTformer}
-Bidirectional Encoder Representations from Transformers (BERT) \cite{devlin2018bert} is a language model designed to understand the context of words in a sentence by considering both the left and right surroundings (bidirectional context). Unlike traditional left-to-right or right-to-left training, BERT is trained on masked language modeling (MLM) and next sentence prediction (NSP) tasks, enabling it to capture a deep understanding of language nuances and context.
+Bidirectional Encoder Representations from Transformers (BERT)\cite{devlin2018bert} is a language model designed to understand the context of words in a sentence by considering both the left and right surroundings (bidirectional context).
+Unlike traditional left-to-right or right-to-left training, BERT is trained on masked language modeling (MLM) and next sentence prediction (NSP) tasks, enabling it to capture a deep understanding of language nuances and context.
 
-In our approach, we implemented a custom transformer model, named BERTformer, by combining the pre-trained frozen BERT model as the encoder and the standard Transformer decoder from the PyTorch \textit{nn.Transformer} library. This hybrid architecture aims to leverage BERT's robust embeddings effectively capture the meaning and context of news articles, thus facilitating better summarization.
+In our approach, we implemented a custom transformer model, named BERTformer, by combining the pre-trained frozen BERT model as the encoder and the standard Transformer decoder from the PyTorch \textit{nn.Transformer} library.
+This hybrid architecture aims to leverage BERT's robust embeddings effectively capture the meaning and context of news articles, thus facilitating better summarization.
 
-The encoder component of BERTformer utilizes the BERT-base model from HuggingFace \cite{BERTHugginFace}, which consists of 12 transformer layers with 768 hidden units and 12 self-attention heads. The BERT encoder had been fed with the embedded masked input sequences, including positional embedding, TF and IDF metrics. The input sequence had to be truncated to a maximum size of 512 tokens. The output of the BERT encoder, which consists of contextualized embeddings, is passed to the transformer decoder, which is the decoder class of the Pytorch's implementation.
-
+The encoder component of BERTformer utilizes the BERT-base model from HuggingFace \cite{BERTHugginFace}, which consists of 12 transformer layers with 768 hidden units and 12 self-attention heads.
+The BERT encoder had been fed with the embedded masked input sequences, including positional embedding, TF and IDF metrics.
+The input sequence had to be truncated to a maximum size of 512 tokens.
+The output of the BERT encoder, which consists of contextualized embeddings, is passed to the transformer decoder, which is the decoder class of the Pytorch's implementation.
