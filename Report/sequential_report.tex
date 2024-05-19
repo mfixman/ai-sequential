@@ -12,10 +12,14 @@
 \usepackage{graphicx}
 % \usepackage{natbib}
 \usepackage{parskip}
-\usepackage{physics}
+% \usepackage{physics}
 \usepackage[obeyspaces]{xurl}
 \usepackage{siunitx}
 \usepackage{calc}
+\usepackage{appendix}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{enumitem}
 
 \usepackage[dvipsnames,table]{xcolor}
 \usepackage{textcomp}
@@ -23,8 +27,21 @@
 \usepackage[hypertexnames=false,hidelinks]{hyperref}
 \usepackage[noabbrev,nameinlink,capitalize,poorman]{cleveref}
 
+\newcommand{\appendixA}{\hyperref[appendixa]{Appendix A}}
+
 % \setcitestyle{square}
 \bibliographystyle{plain}
+
+\definecolor{queryc}{RGB}{200, 200, 200}
+\definecolor{outputc}{RGB}{230, 230, 230}
+\definecolor{targetc}{RGB}{180, 180, 180}
+
+\newcommand{\boxbox}[3]{\colorbox{#1}{\parbox{\textwidth}{\tiny\sffamily\textbf{#2} \\ #3}}}
+\newcommand{\triplebox}[3]{%
+	\boxbox{queryc}{Query:}{#1}
+	\boxbox{outputc}{Output:}{#2}
+	\boxbox{targetc}{Target:}{#3}%
+}
 
 \begin{document}
 \begin{titlepage}
@@ -54,6 +71,7 @@
 \tableofcontents
 
 \clearpage{}
+\setcounter{page}{1}
 \input{introduction.tex}
 
 \clearpage{}
@@ -70,8 +88,15 @@
 \clearpage{}
 \input{conclusions.tex}
 
+\input{reflections.tex}
+
 \clearpage{}
 
+\begin{appendices}
+	\input{examples.tex}
+\end{appendices}
+
+\clearpage{}
 \bibliography{sequential_report.bib}
 
 \end{document}

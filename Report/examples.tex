@@ -1,0 +1,34 @@
+\setcounter{topnumber}{8}
+\setcounter{bottomnumber}{8}
+\setcounter{totalnumber}{8}
+\renewcommand{\thesection}{Appendix \Alph{section}}
+\section{Examples of Results}
+\label{appendixa}
+
+Apologies for the violent news stories! These were sadly the vast majority in our datasets.
+
+\begin{figure}[H]
+	\scriptsize
+	\sffamily
+	\boxbox{queryc}{Query:}{mary ann wood 53 one leg weighs two stone cancer treatment. grandmother spoken agony living medical condition means one leg two stone heavier another. mary ann wood left leg began swell treatment cervical cancer 17 years ago huge calf circumference almost 3ft. 53 year old suffers lymphoedema condition body plumbing goes haywire. means fluid drain properly leaving painfully swollen leg. mrs wood unable bend leg barely able walk doctors said completely immobile less decade. despite denied nhs funding liposuction operation drain fluid leg. made bid doctor agreed would benefit treatment would cost nhs £11 000. case assessed panel local clinical commissioning group ccg application denied ccg said evidence procedure effectiveness poor. claims given several reasons treatment including cosmetic procedure. mrs wood midhurst west sussex forced give job working special needs children continues battle nhs treatment. last month rejected independent complaint advocacy grounds case exceptional enough said. mrs wood said leg [\dots{}]}
+	\boxbox{outputc}{Output:}{year old died died died.....................................}
+	\boxbox{targetc}{Target:}{mary ann wood 53 left leg almost 3ft circumference. weighs 2st right leg equivalent four year old. barely able walk doctors say immobile within decade. lymphoedema condition fluid builds tissue limbs. refused nhs funding liposuction treat condition. clinical commissioning group argues evidence treatment poor "}
+	\caption{Example of results from Seq2Seq model. Results are nonsensical.}
+	\label{seq2seq_example}
+\end{figure}
+
+\begin{figure}[H]
+	\scriptsize
+	\sffamily
+	\boxbox{queryc}{Query:}{sex killer currently serving life four rapes three murders planning appeal sentence wants police dig 6 000 documents help.  david mulcahy schoolfriend john duffy became known railway rapists trawling train lines targeting lone victims london south east england 1980s. duffy jailed life 1988 2001 named accomplice 55 year old mulcahy chalk farm north london also jailed. david mulcahy 55 pictured 1999 dubbed one half railway rapists appealing prison sentence. wants metropolitan police release records prove innocence. despite conviction mulcahy maintained innocent wants metropolitan police release every single detail records. took force court today told judge documents vital proving innocence. officers refused release information saying could take weeks even months costly work get together would disproportionate make huge effort. john potts metropolitan police data protection officer told central london county court documents piled top would three feet high. john duffy left jailed life 1988 name accomplice mulcahy [\dots{}]}
+	\boxbox{outputc}{Output:}{new mitchellaminis plead hi meeting baby chairmaning.. police victims wolf says. dr. carolina police. murkiny bulge convicted police police officer. show. judge judge judge. say mu people.. judge say would mu mu released. people... says authorities......}
+	\boxbox{targetc}{Target:}{david mulcahy john duffy known railway rapists 1980s. targeted lone victims train lines london south east england. mulcahy 55 wants metropolitan police release records. took force court said documents vital proving innocence. officers refused release information saying would take 23 full days.}
+	\caption{Example of results from Transformer model. Results are also nonsensical.}
+	\label{transformer_example}
+\end{figure}
+
+\begin{figure}[H]
+	\triplebox{father 18 month old girl rescued wrecked car 14 hours plunged frigid utah river revealed incredible progress video taken hospital. lily groesbeck released primary children hospital wednesday four days mother wrecked car spotted overturned partially submerged river spanish fork. lily mother 25 year old lynn groesbeck killed crash emergency responders found little girl miraculously alive. blessed lily father 34 year old deven trafny told kutv. counting blessings right... gone. right. overwhelmed joy right. scroll video. safe dad deven trafny smiles looks daughter lily groesbeck video taken hospital released family. lily left hospital surviving 14 hours car wreck. mend trafny seen playing daughter back normal self said. also shared video lily waving shyly camera hospital holds arms. said toddler watching cartoons laughing family members remembers everything knew crash. caring little lily trafny trying comprehend losing love life fiancee lynn. kind hard situation right said. really wrapped head around. love life [\dots{}]}{new revealsigo fan says guilty near morning 000 death says crash deathenid af..y. police left motherigo since says said police near official... baby.. police mother hospital authorities hospital police saidalvilleaval trial.zer.....}{lily groesbeck found alive saturday 14 hours mother car plunged frigid river spanish fork utah. mother lynn groesbeck 25 killed crash emergency responders say heard calling help. lily taken hospital released wednesday. father deven trafny shared video showing smiling waving hospital says singing songs laughing relatives. said struggling comprehend losing love life}
+	\caption{Example of bad results from the BERTFormer model. Results are still nonsensical}
+	\label{bertformer_example}
+\end{figure}

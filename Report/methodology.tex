@@ -82,7 +82,6 @@ We can use the embeddings to estimate how close each predicted word to the real 
 \begin{equation}
 	\mathcal{L}_\text{CS} = 1 - \frac{1}{N} \sum_{n=1}^{N} \sum^W_{w = 1} \frac{\mathbf{x}_{n,w} \cdot \mathbf{y}_{n,w}}{\|\mathbf{x}_{n,w}\| \|\mathbf{y}_{n, w}\|}	
 \end{equation}
-\end{equation}
 
 This loss function would help us reach a result that's meaningful rather than identical to the target, as in the CCE loss.
 
@@ -102,6 +101,7 @@ Unfortunately, the section in \cref{param_sweep_section} showed that having $\va
 This probably speaks of the strength of categorical cross-entropy as a loss.
 
 \subsection{Scoring Functions}
+\label{scoring_section}
 \subsubsection{ROUGE-1 and ROUGE-2}
 To evaluate the performance of our models, we utilized the ROUGE (Recall-Oriented Understudy for Gisting Evaluation) metrics, which are the standard benchmark for abstractive text summarization tasks\cite{abstCNN}.
 

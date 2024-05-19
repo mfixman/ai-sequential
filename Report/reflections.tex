@@ -1,0 +1,48 @@
+\section{Reflections}
+
+This assessment looks like a complete failure.
+While some of our models trained better than others, none of the results in \appendixA{} are even close to not being nonsensical.
+
+Why is sequence analysis so hard? These results provide a good clue.
+While different metrics from their embeddings tell us that some of them should be better than others, there is simply no intuition on what is wrong, or what could improve.
+
+\begin{figure}[h]
+	\begin{subfigure}[][265pt][t]{.48\textwidth}
+		\includegraphics[width=\textwidth]{bad_convolutional_result.png}
+		\includegraphics[width=\textwidth]{bad_convolutional_result_2.png}
+		\caption{Examples of bad results in an Image Segmentation problem. The areas are pixelated, so we likely need to try a larger kernel size of lower resolutions, and the red bus isn't registered as a vehicle, so we likely need to use different training data. Many more conclusions can be had from this data.} 
+	\end{subfigure}\hfill{}%
+	\begin{subfigure}[][265pt][t]{.48\textwidth}
+		\input{reflections_example.tex}
+		\caption{A bad result in text summarisation from our own BERTFormer model. There's no useful information to be gathered from here.}
+	\end{subfigure}
+	\caption{Comparing examples in image analysis with sequence analysis yields one of the reasons why the latter is so difficult: bad results provide no useful information.}
+\end{figure}
+
+When looking at the literature at existing examples of models that \emph{do} succeed in news summarisation, they create models that are considerably more complex than the ones in this assessment.
+
+BART\cite{bart_model}, created by the team currently formerly known as Facebook AI, uses a deionising autoencoder finishing with GPT.
+While the model is not particularly large, it seems that the noise in the input functions improves the results.
+PEGASUS\cite{pegasus_model}, created by engineers at the team formerly known as Google Brain (how quickly things change in the tech world) uses a gap-sentence pre-training which is able to generalise masking to better data.
+
+These two models, among others, present avenues to improve our current models.
+Most importantly, they trained with massive amounts of data that weren't available to us due to time and technical reasons.
+
+However, here are some areas where we'd like to continue experimenting.
+\begin{description}[style=nextline]
+	\item[Embedding Size]
+		In retrospect, this was a good area to add to the parameter sweep in \cref{param_sweep_section}.
+		It's possible that using only 512 dimensions in the embedding was the reason for the bad performance of our models.
+	\item[Novel uses of masking]
+		Similar to how PEGASUS uses Gap-Sentence Generation masking\cite{pegasus_model}, we can train a model to generate missing sentences from a document, mimicking the summarisation task.
+	\item[Using a GPT decoder]
+		Part of the original methodology of our work was creating a model with a transfomer encoder and a GPT decoder.
+		GPT generally provides more readable results and would be a good solution for our ``nonsensical output'' problem.
+		However, we found it hard to integrate pre-trained GPT models with our encoder due to tokenisation differences.
+	\item[Just training more data and for more time]
+		Most of our models minimised validation loss and finished training early.
+		However, the ROUGE metric in \cref{baseline_rouges} seems to keep going up.
+		It's likely that training for many more epochs would have resulted in better results. \\
+		Another one of the restrictions we faced during this project, due to lack of time and due to not wanting to use Hyperion slots for too long, was not using the full dataset of \num{287113} entries for training.
+		It's possible that training on more data, even if it would have taken a huge amount of time, would have resulted in better results.
+\end{description}
