@@ -38,7 +38,13 @@ However, here are some areas where we'd like to continue experimenting.
 	\item[Using a GPT decoder]
 		Part of the original methodology of our work was creating a model with a transfomer encoder and a GPT decoder.
 		GPT generally provides more readable results and would be a good solution for our ``nonsensical output'' problem.
-		However, we found it hard to integrate pre-trained GPT models with our encoder due to tokenisation differences.
+		However, we found it hard to integrate pre-trained GPT models with our encoder due to tokenisation differences. \\
+		We were in the process of creating two GPT models to continue our work.
+		\begin{itemize}
+			\item \textbf{TransGPT}, which implements a transformer encoder and a GPT decoder.
+			\item \textbf{BERTGPT}, which implements a BERT encoder and a GPT decoder.
+				This is similar to the approach taken by BART\cite{bart_model}, and it would explore potential benefits of combining strong contextual understanding with generative capabilities.
+		\end{itemize}
 	\item[Just training more data and for more time]
 		Most of our models minimised validation loss and finished training early.
 		However, the ROUGE metric in \cref{baseline_rouges} seems to keep going up.

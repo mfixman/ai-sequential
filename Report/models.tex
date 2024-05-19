@@ -94,15 +94,3 @@ In our approach, we implemented a custom transformer model, named BERTformer, by
 
 The encoder component of BERTformer utilizes the BERT-base model from HuggingFace \cite{BERTHugginFace}, which consists of 12 transformer layers with 768 hidden units and 12 self-attention heads. The BERT encoder had been fed with the embedded masked input sequences, including positional embedding, TF and IDF metrics. The input sequence had to be truncated to a maximum size of 512 tokens. The output of the BERT encoder, which consists of contextualized embeddings, is passed to the transformer decoder, which is the decoder class of the Pytorch's implementation.
 
-\subsection{TransGPT}
-Generative Pre-trained Transformer 2 (GPT-2) \cite{radford2019language} is an autoregressive language model designed to generate coherent and contextually relevant text by predicting the next word in a sequence. Trained on a diverse dataset, GPT-2 excels at generating human-like text and understanding context, making it an ideal choice for tasks that involve text generation.
-
-As an experimental approach, we implemented a custom transformer model, named TransGPT, by combining the standard Transformer encoder from the PyTorch \textit{nn.Transformer} library with the pre-trained frozen GPT-2 model as the decoder. This model aims to exploit the GPT-2's autoregressive nature, possibly producing fluent and coherent text, which is crucial for generating meaningful summaries.
-
-The embedded and masked input sequence is passed to the encoder class of the Pytorch's implementation. The contextual embeddings output of the encoder, are then fed into the pre-trained GPT-2 model which consists of multiple transformer layers with self-attention and feed-forward neural networks. The output sequence is then truncated to the target length to effectively calculate the loss function.
-
-\subsection{BERTGPT}
-The BERTGPT model is an experimental approach that combines a pre-trained and frozen BERT model as the encoder with a pre-trained frozen GPT-2 model as the decoder. This combination leverages the strengths of both models: BERT's robust contextual understanding and GPT-2's generative capabilities. However, it also presents significant challenges, primarily because these models were pre-trained for different tasks and are not fine-tuned together, which may result in integration cohesion issues.
-
-The rationale for using this architecture is to explore the potential benefits of combining strong contextual understanding with generative capabilities. By maintaining the pre-trained states, we aim to investigate how well these models can work together without further fine-tuning.
-
