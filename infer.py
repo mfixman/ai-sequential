@@ -147,7 +147,8 @@ def get_run(tag: str) -> tuple[dict[str, Any], str]:
     return run.config, os.path.join(artifact_dir, 'model.pth')
 
 def main():
-    config, checkpoint = get_run(tag='transformer_final')
+    tag = 'transformer_final'
+    config, checkpoint = get_run(tag=tag)
 
     print(checkpoint)
     data_setting = config['data_settings']

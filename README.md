@@ -83,4 +83,16 @@ To replicate the environment and run the code follow these steps (**Warning**: a
         python train.py --model_name transformer --max_samples 10
         ```
 
+        * Note: to know which parameter you can pass run:
+            ```bash
+            python train.py --help
+            ```
+
 3. Inference
+
+    To run the inference on a randomly selected sample from the test set run:
+    ```bash
+    python infer.py
+    ```
+
+    To select the model change the 'tag' argument at line 150 of the 'infer.py' file.
