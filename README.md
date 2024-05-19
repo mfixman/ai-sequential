@@ -92,7 +92,7 @@ To replicate the environment and run the code follow these steps (**Warning**: a
 
     To run the inference on a randomly selected sample from the test set run:
     ```bash
-    python infer.py
+    python infer.py [model]
     ```
 
-    To select the model change the 'tag' argument at line 150 of the 'infer.py' file.
+    Where `model` is one of "seq2seq", "transformer", or "bertformer".
