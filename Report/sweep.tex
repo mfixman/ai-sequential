@@ -51,7 +51,7 @@ The results from the parameter sweep can be found in the three scatter plots in 
 	\vspace{-7pt}
 \end{figure}
 
-The results are very similar to those in \cref{sweep_results}, and both parameter sweeps have a clear winner with low learning rate and no use of cosine similarity loss ($\varpappa = 0$).
+The results are very similar to those in \cref{sweep_results}, and both parameter sweeps have a clear winner with low learning rate and no use of cosine similarity loss ($\varkappa = 0$).
 
 Despite this, the BERTFormer models using $\varkappa > 0$ seems to have better results on CS score than the Transformer model when trained on the small amount of samples that were needed for a run in this parameter sweep.
 This is likely due to the pre-trained encoder producing more sensible language without need for much training, and is worth experiment on in the future.
