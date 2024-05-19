@@ -1,3 +1,16 @@
 \section{Conclusions}
-\paragraph{COmment To be changed!}Fine.tuning BERT and GPT models could help improving teh performance by adapting teh mdoels to the abstarctive text sumamrization task - This requires a lot of computational resources and time!!!
 
+As the results in \appendixA{} show, none of the models we trained produced anywhere near sensible results.
+While this makes analysis harder, we at least have our metrics to figure out what worked and how to continue.
+
+The parameter sweeps in \cref{param_sweep_section} gave a surprising result that's consistent with previous work in this area: training a loss function that simulates a particular score does not necessarily provide the best results for that score.
+As \cref{sweep_results,bertformer_sweep_results} show, the versions with $\varkappa > 0$ which contain a lossified version of the cosine similarity score as part of the loss function produce worse results on this loss than the ones trained on categorical cross-entropy.
+
+This surprising result is likely caused by the smoothness of the categorical cross-entropy loss, and the trained embeddings being a larger factor in maximising CS loss than the trained model itself.
+
+The TF and IDF word features presented in \cref{data_preprocessing} improved performance of the models.
+An initial version of the transformer, trained without these metrics, performed considerably close to the LSTM Seq2Seq model.
+Additionally, the pre-trained BERT tokeniser improved training and evaluation times by a lot, allowing us to experiment faster and with more data.
+
+\Cref{comparison_table} shows the final scores of our models, which show a large advantage of the transformer model over the LSTM Seq2Seq model and a smaller one between BERTFormers and Transformers.
+This is consistent with our expectations, althrough we were expecting the pre-trained BERT encoder to caused a larger improvement in metrics.
