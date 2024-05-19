@@ -42,20 +42,38 @@ Despite this, it has significantly better ROUGE scores than the previous two cla
 	\caption{ROUGE-1 and ROUGE-2 scores of the BERTFormer transformer, as it trains. The Rouge-1 score grows rapidly after the CCE loss stops growing and the training stops early; this is another proof that this loss might not be the best for this problem.}
 \end{figure}
 
+% \newpage{}
+We can compare Cosine Similarity scores in \cref{cs_scores} with the transformer classifier to confirm that, while it's significantly better due to the BERT pre-trained embedding, it does not grow much as the model trains.
+
+Why do the ROUGE scores improve as the model trains while the cosine similarity score doesn't? It's possible that the words predicted are ``close enough'' to the correct ones despite being wrong, althrough this seems to contradict the results of \appendixA{}. It's also possible that the embedding layer is not being trained sufficiently, which causes a collapse in the spatial dimensions and generally high CS scores for bad results.
+
+\begin{figure}[h]
+	\includegraphics[width=\textwidth]{cs_scores.png}
+	\caption{Cosine similarity scores of Transformer and BERTFormer models. The pretrained BERT encoder provides a significant advantage in guessing a result that's ``close'' to the target one; however, this advantage does not seem to grow as it trains unlike the ROUGE scores.}
+	\label{cs_scores}
+\end{figure}
+
+\newpage{}
+\subsection{Final Results}
+The final results contain a small but significant advantage in the BERTFormer model for all metrics.
+
 \begin{table}[h]
 	\centering
-	\small
-	\begin{tabular}{l | c c c}
+	\scriptsize
+	\begin{tabular}{l | c c c c}
 		\toprule
-			Model & CCE & ROUGE-1 & ROUGE-2 \\
+			Model & CCE & ROUGE-1 & ROUGE-2 & CS Score Sum \\
 		\midrule
-			Seq2Seq & 8.809 & 0.088 & 0.006 \\
-			Transformer & 8.787 & 0.134 & 0.019 \\
-			BERTFormer & 8.846 & 0.137 & 0.023 \\
+			Seq2Seq & 8.809 & 0.088 & 0.006 & N/A\footnotemark{} \\
+			Transformer & 8.787 & 0.134 & 0.019 & 33.79 \\
+			BERTFormer & 8.846 & 0.137 & 0.023 & 34.68 \\
 		\bottomrule
 	\end{tabular}
 	\caption{Comparison of final scores between models. See \appendixA{} for text examples.}
 	\label{comparison_table}
 \end{table}
 
-Sadly, this model keeps giving nonsensical and unworkable results, as seen in \cref{bertformer_example} in \appendixA{}
+Sadly, this model keeps giving nonsensical and unworkable results, as seen in \cref{bertformer_example} in \appendixA{}.
+Some reflections to the causes of this result and how to possibly fix them appear in \cref{reflections_section}.
+
+\footnotetext{Our implementation of cosine similarity scores requires the output of the decoder as the representation of the entire sequence. It's not easy to think of a reasonable implementation of this in our Seq2Seq model, so this score is not calculated for this model.}
