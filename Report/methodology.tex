@@ -4,9 +4,9 @@
 \label{data_preprocessing}
 
 \subsubsection{Tokenisation}
-For processing the data must be separated into tokens, which are later one-hot-encoded into the models (which include the embeddings).
+For processing the data must be separated into tokens, which are later encoded into the models (which include the embeddings).
 
-This tokenisation is not trivial, since having too many words can unnecessarily produce high dimensionality in the embeddings which can make the model slower and more efficient.
+This tokenisation is not trivial, since having too many words can unnecessarily produce high dimensionality in the embeddings which can make the model slower and less efficient.
 To prevent this we use a pretrained BERT subword tokeniser\cite{BERTtokenizer}.
 
 \begin{figure}[h]
@@ -51,7 +51,6 @@ The embedding layer, present in all our models, returns a spatial embedding.
 \subsubsection{Punctuation}
 Most punctuation is removed from the dataset, as it doesn't help in our objective of summarising a text.
 Periods \textsf{`\textbf{.}'} are retained, since they help separate between the many news in our input text.
-We also do not delete apostrophes \textsf{`\textbf{'}'}, as they are an integral part of the English language\cite{apostrophes}.
 
 \subsubsection{TF and IDF Metrics Embedding}
 

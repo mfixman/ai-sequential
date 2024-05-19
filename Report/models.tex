@@ -13,7 +13,7 @@ The encoder takes an input sequence \( X = (x_1, x_2, \ldots, x_n) \) and proces
 where \( \mathbf{e}_t \) is the embedding of the input token \( x_t \) and \( \mathbf{h}_t \) is the hidden state at time step \( t \).
 
 \paragraph{Decoder:}
-The decoder generates the output sequence \( Y = (y_1, y_2, \ldots, y_m) \) one token at a time. At each time step \( t \), the decoder takes the previous token \( y_{t-1} \), the previous hidden state, and the previous cell state as inputs, and produces the current token \( y_t \). An embedding layer is also used in the decoder to convert the input tokens into dense vectors before passing them to the LSTM layers. Initially, the decoder receives the start-of-sequence token \( \langle \text{sos} \rangle \) as the first input. The decoder's operations can be described as:
+The decoder generates the output sequence \( Y = (y_1, y_2, \ldots, y_m) \) one token at a time. At each time step \( t \), the decoder takes the previous token \( y_{t-1} \), the previous hidden state, and the previous cell state as inputs, and produces the current token \( y_t \). An embedding layer is also used in the decoder to convert the input tokens into dense vectors before passing them to the LSTM layers. Initially, the decoder receives the start-of-sequence token \( \texttt{<SOS>} \) as the first input. The decoder's operations can be described as:
 \begin{equation}
     \mathbf{e}_t' = \text{Embedding}(y_{t-1}) \,\, \rightarrow \,\, \mathbf{h}_t = \text{LSTM}(\mathbf{e}_t', \mathbf{h}_{t-1})
 \end{equation}
