@@ -1,5 +1,9 @@
 \section{Results}
 
+Each of the classifiers described in \cref{models_section} was trained in a random subset of \num{50000} news samples for our dataset for 30 epochs.
+
+The 30 epochs were more than enough, since we get the value from the epoch with the best validation score as described in \cref{early_stopping}.
+
 \subsection{Seq2Seq and Transformer models}
 Both the Seq2Seq and Transformer models seem to train slowly due to the large amount of data provided.
 
@@ -53,7 +57,6 @@ Why do the ROUGE scores improve as the model trains while the cosine similarity 
 	\label{cs_scores}
 \end{figure}
 
-\newpage{}
 \subsection{Final Results}
 The final results contain a small but significant advantage in the BERTFormer model for all metrics.
 
