@@ -3,6 +3,11 @@
 As the results in \appendixA{} show, none of the models we trained produced anywhere near sensible results.
 While this makes analysis harder, we at least have our metrics to figure out what worked and how to continue.
 
+Our initial experimentation did not include the period token `\textbf{.}' in the text after the preprocessing, as it's normally the case in these models.
+However, this caused confusion in source news as it failed to distinguish between sentences effectively.
+While keeping this token produced better results, some metrics on these tokens should have been calculated differently.
+This is expanded upon in \crerf{reflections_section}.
+
 The parameter sweeps in \cref{param_sweep_section} gave a surprising result that's consistent with previous work in this area: training a loss function that simulates a particular score does not necessarily provide the best results for that score.
 As \cref{sweep_results,bertformer_sweep_results} show, the versions with $\varkappa > 0$ which contain a lossified version of the cosine similarity score as part of the loss function produce worse results on this loss than the ones trained on categorical cross-entropy.
 

@@ -30,12 +30,18 @@ These two models, among others, present avenues to improve our current models.
 Most importantly, they trained with massive amounts of data that weren't available to us due to time and technical reasons.
 
 However, here are some areas where we'd like to continue experimenting.
-\begin{description}[style=nextline]
+\begin{description}[style=nextline,itemsep=10pt]
 	\item[Embedding Size]
 		In retrospect, this was a good area to add to the parameter sweep in \cref{param_sweep_section}.
 		It's possible that using only 512 dimensions in the embedding was the reason for the bad performance of our models.
+	\item[TF and IDF tokens in the period token]
+		While keeping the period token `\textbf{.}' was necessary for our report, calculating TF and IDF tokens for it in the enhanced models does not make sense caused it to become disproportionately important throughout the dataset as it was by far the most common token.
+		These metrics should be calculated ignoring this token.
+		Alternatively, the end-of-sequence token could be employed to mark sentence boundaries, which might offer a more effective solution.
 	\item[Novel uses of masking]
 		Similar to how PEGASUS uses Gap-Sentence Generation masking\cite{pegasus_model}, we can train a model to generate missing sentences from a document, mimicking the summarisation task.
+		This masking selects ``important'' sentences during training on each input source, which are later masked in the document and the model trained in prediction.
+		This works well for summarisation, since it focuses on reconstructing important sentences.
 	\item[Non-novel uses of cosine similarity score and loss]
 		Cosine Similarity Loss and Scores, introduced in \cref{cosine_similarity_loss,cosine_similarity_score}, did not average by word in an attempt to have better scores on shorter sequences.
 		This was likely a large mistake, as none of the results either using the loss or producing the score were reasonable.
